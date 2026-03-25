@@ -33,6 +33,14 @@
 
       <!-- Connection Lines Layer -->
       <svg class="connections-layer">
+        <!-- Arrow marker definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                  refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#b55d3a" />
+          </marker>
+        </defs>
+        
         <g v-for="connection in connections" :key="connection.id">
           <line
             :x1="connection.x1"
@@ -59,6 +67,12 @@
           </foreignObject>
         </g>
       </svg>
+
+      <!-- Loading indicator -->
+      <div v-if="isLoading" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading canvas...</div>
+      </div>
 
       <!-- Elements Layer -->
       <div
@@ -277,6 +291,9 @@ const dragCurrentPos = ref({ x: 0, y: 0 })
 const isDragging = ref(false)
 const resizingElement = ref(null)
 const resizeHandle = ref(null)
+const showConnectionLabels = ref(true)
+const isLoading = ref(true)
+const saveTimer = ref(null)
 
 // Computed
 const gridStyle = computed(() => ({
@@ -308,18 +325,18 @@ function getStrokePattern(type) {
     dashed: '10,5',
     dotted: '3,3'
   }
-  const connType = connectionTypes.find(ct => ct.name === type)
+  const connType = CONNECTION_TYPES.find(ct => ct.name === type)
   return patterns[connType?.stroke_pattern || 'solid']
 }
 
 function getArrowMarker(type) {
-  const connType = connectionTypes.find(ct => ct.name === type)
+  const connType = CONNECTION_TYPES.find(ct => ct.name === type)
   if (connType?.arrow_style === 'none') return ''
   return 'url(#arrowhead)'
 }
 
 function getConnectionLabel(type) {
-  const connType = connectionTypes.find(ct => ct.name === type)
+  const connType = CONNECTION_TYPES.find(ct => ct.name === type)
   return t(connType?.label_key || type)
 }
 
@@ -387,10 +404,24 @@ function onElementMouseDown(e, element) {
 }
 
 function onWheel(e) {
-  if (e.ctrlKey) {
+  if (e.ctrlKey || e.metaKey) {
     e.preventDefault()
     const delta = e.deltaY > 0 ? -0.1 : 0.1
-    zoom.value = Math.max(0.25, Math.min(3, zoom.value + delta))
+    const newZoom = Math.max(0.25, Math.min(3, zoom.value + delta))
+    
+    // Zoom towards cursor position
+    if (canvasRef.value) {
+      const rect = canvasRef.value.getBoundingClientRect()
+      const mouseX = e.clientX - rect.left
+      const mouseY = e.clientY - rect.top
+      
+      const scaleChange = newZoom / zoom.value
+      zoom.value = newZoom
+      
+      // Adjust scroll to keep mouse position stable
+      canvasRef.value.scrollLeft += mouseX * (scaleChange - 1)
+      canvasRef.value.scrollTop += mouseY * (scaleChange - 1)
+    }
   }
 }
 
@@ -491,8 +522,9 @@ function handleResize(e) {
     el.position_y += dy
   }
   
-  el.width = Math.max(100, el.width)
-  el.height = Math.max(50, el.height)
+  // Enforce minimum/maximum sizes
+  el.width = Math.max(100, Math.min(2000, el.width))
+  el.height = Math.max(50, Math.min(2000, el.height))
 }
 
 // Zoom controls
@@ -516,25 +548,38 @@ function quickAddCard(status) {
 
 // Save/Load
 async function loadElements() {
-  if (!isSupabaseConfigured) return
+  isLoading.value = true
   
-  const { data, error } = await supabase
-    .from('canvas_elements')
-    .select('*')
-    .eq('project_id', props.projectId)
-    .order('z_index')
-  
-  if (error) {
-    console.error('[CanvasEditor] Load error:', error)
+  if (!isSupabaseConfigured) {
+    console.warn('[CanvasEditor] Supabase not configured - running in offline mode')
+    isLoading.value = false
     return
   }
   
-  elements.value = data || []
-  loadConnections()
+  try {
+    const { data, error } = await supabase
+      .from('canvas_elements')
+      .select('*')
+      .eq('project_id', props.projectId)
+      .order('z_index')
+    
+    if (error) throw error
+    
+    elements.value = data || []
+    loadConnections()
+    
+    console.log(`[CanvasEditor] Loaded ${elements.value.length} elements`)
+  } catch (err) {
+    console.error('[CanvasEditor] Load failed:', err.message)
+    // Show user-friendly error
+  } finally {
+    isLoading.value = false
+  }
 }
 
 function loadConnections() {
   // Build connections from elements with parent_id
+  // Updates dynamically when elements move
   connections.value = elements.value
     .filter(el => el.parent_id && el.type === 'connection')
     .map(el => {
@@ -552,34 +597,51 @@ function loadConnections() {
 }
 
 function getConnectionColor(type) {
-  const connType = connectionTypes.find(ct => ct.name === type)
+  const connType = CONNECTION_TYPES.find(ct => ct.name === type)
   return connType?.color || '#b55d3a'
 }
 
 async function saveCanvas() {
   if (!isSupabaseConfigured || !props.canEdit) return
   
-  // Save all elements (upsert)
-  for (const el of elements.value) {
-    await supabase
-      .from('canvas_elements')
-      .upsert({
+  // Debounce saves to avoid excessive DB writes
+  clearTimeout(saveTimer.value)
+  saveTimer.value = setTimeout(async () => {
+    try {
+      const elementsToSave = elements.value.map(el => ({
         ...el,
         updated_at: new Date().toISOString()
-      })
-  }
-  
-  console.log('[CanvasEditor] Saved', elements.value.length, 'elements')
+      }))
+      
+      // Bulk upsert for better performance
+      const { error } = await supabase
+        .from('canvas_elements')
+        .upsert(elementsToSave, { 
+          onConflict: 'id',
+          ignoreDuplicates: false
+        })
+      
+      if (error) throw error
+      
+      console.log('[CanvasEditor] Saved', elements.value.length, 'elements')
+      
+      // TODO: Add to history for undo/redo
+      // addToHistory('bulk_update', null, elementsToSave)
+    } catch (err) {
+      console.error('[CanvasEditor] Save failed:', err.message)
+      // Could show user-friendly error toast here
+    }
+  }, 1000) // Wait 1 second after last change before saving
 }
 
 function undo() {
-  // Implement undo history
-  console.log('Undo')
+  // TODO: Implement undo history
+  console.warn('Undo not yet implemented - coming soon!')
 }
 
 function redo() {
-  // Implement redo
-  console.log('Redo')
+  // TODO: Implement redo
+  console.warn('Redo not yet implemented - coming soon!')
 }
 
 // Lifecycle
@@ -590,17 +652,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   isEditing.value = false
+  clearTimeout(saveTimer.value)
 })
-
-// Connection types reference
-const connectionTypes = [
-  { name: 'subProject', label_key: 'connections.subProject', color: '#ff5f1f', stroke_pattern: 'solid', arrow_style: 'classic' },
-  { name: 'related', label_key: 'connections.related', color: '#6a7d5b', stroke_pattern: 'dashed', arrow_style: 'classic' },
-  { name: 'inspiration', label_key: 'connections.inspiration', color: '#b55d3a', stroke_pattern: 'dotted', arrow_style: 'arrow' },
-  { name: 'evolution', label_key: 'connections.evolution', color: '#508cdc', stroke_pattern: 'solid', arrow_style: 'arrow' },
-  { name: 'dependency', label_key: 'connections.dependency', color: '#9b59b6', stroke_pattern: 'dashed', arrow_style: 'arrow' },
-  { name: 'reference', label_key: 'connections.reference', color: '#95a5a6', stroke_pattern: 'dotted', arrow_style: 'none' }
-]
 
 // Expose methods
 defineExpose({
@@ -938,5 +991,64 @@ defineExpose({
   font-size: 0.7rem;
   color: var(--moss-light);
   text-transform: uppercase;
+}
+
+/* Loading indicator */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(20, 20, 18, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(106, 125, 91, 0.2);
+  border-top-color: var(--moss);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--moss-light);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Image error handling */
+.element-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.element-image:not([src]) {
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.element-image:not([src])::after {
+  content: 'Image not loaded';
+  color: var(--moss-light);
+  font-size: 0.75rem;
+  font-family: 'Space Mono', monospace;
 }
 </style>
