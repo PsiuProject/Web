@@ -239,13 +239,33 @@
       <div class="detail-node members-node">
         <div class="node-header">INVITE COLLABORATORS</div>
 
+        <!-- Quick invite suggestions -->
+        <div v-if="recentCollaborators.length > 0" class="quick-invites">
+          <span class="quick-invites-label">Suggested:</span>
+          <button
+            v-for="collab in recentCollaborators"
+            :key="collab.email"
+            class="quick-invite-chip"
+            @click="inviteEmail = collab.email"
+          >
+            {{ collab.email.split('@')[0] }}
+            <span class="quick-invite-role">{{ collab.role }}</span>
+          </button>
+        </div>
+
         <!-- Invite form -->
         <form @submit.prevent="inviteMember" class="invite-form">
-          <input v-model="inviteEmail" type="email" placeholder="email@example.com" class="invite-input" required />
+          <input 
+            v-model="inviteEmail" 
+            type="email" 
+            placeholder="email@example.com or @mention" 
+            class="invite-input" 
+            required 
+          />
           <select v-model="inviteRole" class="invite-role">
-            <option value="viewer">Viewer</option>
-            <option value="commenter">Commenter</option>
-            <option value="editor">Editor</option>
+            <option value="viewer">Viewer (Read-only)</option>
+            <option value="commenter">Commenter (Can comment)</option>
+            <option value="editor">Editor (Can edit)</option>
           </select>
           <button type="submit" class="invite-btn">Invite</button>
         </form>
@@ -256,8 +276,11 @@
             <div class="member-info">
               <div class="member-avatar">{{ member.email.charAt(0).toUpperCase() }}</div>
               <div>
-                <div class="member-email">{{ member.email }}</div>
-                <div class="member-role-label">{{ member.role }}</div>
+                <div class="member-email">
+                  {{ member.email }}
+                  <span v-if="member.user_id" class="member-joined-badge">✓ Joined</span>
+                </div>
+                <div class="member-role-label">{{ getRoleLabel(member.role) }}</div>
               </div>
             </div>
             <div class="member-actions">
@@ -266,9 +289,9 @@
                 @change="changeRole(member.id, $event.target.value)"
                 class="role-select"
               >
-                <option value="viewer">Viewer</option>
-                <option value="commenter">Commenter</option>
-                <option value="editor">Editor</option>
+                <option value="viewer">Viewer (Read-only)</option>
+                <option value="commenter">Commenter (Can comment)</option>
+                <option value="editor">Editor (Can edit)</option>
               </select>
               <button class="remove-member-btn" @click="removeMember(member.id)">&times;</button>
             </div>
@@ -356,6 +379,37 @@ const members = computed(() => {
   return membersStore.getMembersByProject(props.project.id)
 })
 
+const recentCollaborators = computed(() => {
+  // Get recent collaborators from other projects owned by current user
+  if (!auth.isLoggedIn) return []
+  const allProjects = projectsStore.projects.filter(p => p.owner_id === auth.userId)
+  const emails = new Map()
+  
+  allProjects.forEach(p => {
+    const projMembers = membersStore.getMembersByProject(p.id) || []
+    projMembers.forEach(m => {
+      if (m.email !== inviteEmail.value && !emails.has(m.email)) {
+        emails.set(m.email, m.role)
+      }
+    })
+  })
+  
+  return Array.from(emails.entries()).slice(0, 5).map(([email, role]) => ({
+    email,
+    role
+  }))
+})
+
+function getRoleLabel(role) {
+  const labels = {
+    viewer: 'Viewer',
+    commenter: 'Commenter',
+    editor: 'Editor',
+    owner: 'Owner'
+  }
+  return labels[role] || role
+}
+
 const privacyOptions = [
   { value: 'public', label: 'Public', icon: '\uD83C\uDF0D' },
   { value: 'private', label: 'Private', icon: '\uD83D\uDD12' },
@@ -363,8 +417,13 @@ const privacyOptions = [
 ]
 
 const shareUrl = computed(() => {
-  return `${window.location.origin}/projects/#/p/${props.project.id}`
+  // Use share_slug if available, fallback to project ID
+  const slugOrId = props.project.share_slug || `p/${props.project.id}`
+  return `${window.location.origin}${import.meta.env.BASE_URL || '/'}#/s/${slugOrId}`
 })
+
+const slugUrl = computed(() => shareUrl.value)
+const slugCopied = ref(false)
 
 // Load data on mount
 onMounted(async () => {
@@ -419,6 +478,21 @@ async function setPrivacy(privacy) {
 
 function copyShareLink() {
   navigator.clipboard.writeText(shareUrl.value).catch(() => {})
+}
+
+async function copySlugLink() {
+  try {
+    await navigator.clipboard.writeText(slugUrl.value)
+    slugCopied.value = true
+    setTimeout(() => { slugCopied.value = false }, 2000)
+  } catch (e) {}
+}
+
+async function regenerateSlug() {
+  const newSlug = await projectsStore.generateShareSlug(props.project.id)
+  if (newSlug) {
+    // Show success feedback
+  }
 }
 
 async function addBlock(type) {
@@ -919,6 +993,48 @@ async function removeMember(memberId) {
 }
 
 /* Members */
+.quick-invites {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.quick-invites-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--moss-light);
+  text-transform: uppercase;
+}
+
+.quick-invite-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(106, 125, 91, 0.15);
+  border: 1px solid rgba(106, 125, 91, 0.3);
+  color: var(--paper);
+  padding: 4px 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quick-invite-chip:hover {
+  background: rgba(106, 125, 91, 0.3);
+  border-color: var(--moss);
+}
+
+.quick-invite-role {
+  opacity: 0.6;
+  font-size: 0.6rem;
+}
+
 .invite-form {
   display: flex;
   gap: 6px;
@@ -1001,6 +1117,19 @@ async function removeMember(memberId) {
 .member-email {
   font-size: 0.8rem;
   color: var(--paper);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.member-joined-badge {
+  font-size: 0.6rem;
+  color: var(--moss);
+  text-transform: uppercase;
+  font-family: 'Space Mono', monospace;
+  padding: 1px 4px;
+  background: rgba(106, 125, 91, 0.15);
+  border-radius: 3px;
 }
 
 .member-role-label {

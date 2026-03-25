@@ -260,5 +260,44 @@
       "title": "O DESPERTAR DAS MATAS",
       "description": "Circus and theater with socio-environmental themes at EMEB Áurea Soares public school."
     }
+  },
+
+  "empty": {
+    "welcome": {
+      "title": "WELCOME TO YOUR CANVAS",
+      "subtitle": "Your space to map, connect, and share environmental and cultural projects. Get started now!"
+    },
+    "features": {
+      "create": {
+        "title": "Create Projects",
+        "desc": "Document initiatives with rich details in multiple languages"
+      },
+      "collab": {
+        "title": "Collaborate",
+        "desc": "Invite team members with different permission levels"
+      },
+      "share": {
+        "title": "Share",
+        "desc": "Generate unique creative links to share your work"
+      },
+      "multilang": {
+        "title": "Multi-language",
+        "desc": "Auto PT/EN translations with custom glossary"
+      }
+    },
+    "actions": {
+      "login": "LOGIN / SIGN UP",
+      "create": "CREATE FIRST PROJECT"
+    },
+    "hints": {
+      "login": "Log in to save your projects and collaborate in real-time",
+      "create": "Create your first project right now!"
+    },
+    "preview": {
+      "label": "YOUR PROJECTS WILL APPEAR LIKE THIS:"
+    },
+    "example": {
+      "axis": "Art & Culture"
+    }
   }
 }

@@ -81,9 +81,12 @@ export const useProjectsStore = defineStore('projects', {
         if (data && data.length > 0) {
           this.projects = data
           this.isSupabaseLoaded = true
+          console.log(`[Projects] Loaded ${data.length} project(s) from Supabase`)
         } else {
-          // Fallback to hardcoded data if DB is empty
-          this.useFallbackData()
+          // Database is empty - don't use fallback, start fresh
+          this.projects = []
+          this.isSupabaseLoaded = true
+          console.log('[Projects] Database is empty - ready for new projects')
         }
       } catch (err) {
         console.warn('[Projects] Supabase load failed, using fallback data:', err.message)
@@ -225,9 +228,29 @@ export const useProjectsStore = defineStore('projects', {
 
     // Generate a funny readable slug and save it to the project
     async generateShareSlug(id) {
-      const adjectives = ['cosmic','ancient','wild','silent','burning','frozen','golden','shadow','crystal','thunder']
-      const nouns = ['jaguar','river','forest','volcano','condor','serpent','moon','storm','root','ember']
-      const slug = `${adjectives[Math.floor(Math.random()*adjectives.length)]}-${nouns[Math.floor(Math.random()*nouns.length)]}-${Math.random().toString(36).slice(2,6)}`
+      const adjectives = [
+        'cosmic','ancient','wild','silent','burning','frozen','golden','shadow',
+        'crystal','thunder','mystic','radiant','emerald','sapphire','dragon',
+        'phoenix','lunar','solar','stellar','nebula','quantum','electric',
+        'velvet','iron','bronze','titan','omega','alpha','zenith','nexus'
+      ]
+      const nouns = [
+        'jaguar','river','forest','volcano','condor','serpent','moon','storm',
+        'root','ember','wolf','eagle','tiger','bear','falcon','panther',
+        'spirit','warrior','guardian','keeper','wanderer','dreamer','vision',
+        'horizon','sunrise','twilight','midnight','comet','meteor','galaxy'
+      ]
+      const connectors = ['of', 'and', 'the', 'vs', 'x']
+      
+      const adj1 = adjectives[Math.floor(Math.random() * adjectives.length)]
+      const adj2 = adjectives[Math.floor(Math.random() * adjectives.length)]
+      const noun = nouns[Math.floor(Math.random() * nouns.length)]
+      const connector = connectors[Math.floor(Math.random() * connectors.length)]
+      const code = Math.random().toString(36).slice(2, 5)
+      
+      // Create funny combinations like: "cosmic-dragon-and-lunar-jaguar-x42"
+      const slug = `${adj1}-${noun}-${connector}-${adj2}-${code}`
+      
       await this.updateProject(id, { share_slug: slug })
       return slug
     },

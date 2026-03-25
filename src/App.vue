@@ -1,71 +1,81 @@
 <template>
   <div id="app">
     <AppHeader />
-    <Sidebar v-if="!store.detailViewActive" />
-    <div id="viewport" @mousedown="onMouseDown" @mousemove="onMouseMove" @mouseup="onMouseUp" @mouseleave="onMouseLeave">
+    
+    <!-- Empty State - Show when no projects exist -->
+    <template v-if="projectsStore.projects.length === 0 && !projectsStore.loading">
+      <EmptyState />
+    </template>
+    
+    <!-- Gallery View - Show when projects exist -->
+    <template v-else>
+      <Sidebar v-if="!store.detailViewActive" />
+      <div id="viewport" @mousedown="onMouseDown" @mousemove="onMouseMove" @mouseup="onMouseUp" @mouseleave="onMouseLeave">
 
-      <!-- Detail View Overlay -->
-      <Transition name="detail-fade">
-        <div v-if="store.detailViewActive && store.detailViewProject"
-             id="detail-canvas"
-             class="canvas-layer detail-overlay"
-             :class="{ 'active': store.detailViewAnimated }">
-          <ProjectDetail
-            :project="store.detailViewProject"
-            :translateX="store.translateX"
-            :translateY="store.translateY"
-            :zoom="store.zoom"
-            @close="store.closeDetailView()"
+        <!-- Detail View Overlay -->
+        <Transition name="detail-fade">
+          <div v-if="store.detailViewActive && store.detailViewProject"
+               id="detail-canvas"
+               class="canvas-layer detail-overlay"
+               :class="{ 'active': store.detailViewAnimated }">
+            <ProjectDetail
+              :project="store.detailViewProject"
+              :translateX="store.translateX"
+              :translateY="store.translateY"
+              :zoom="store.zoom"
+              @close="store.closeDetailView()"
+            />
+          </div>
+        </Transition>
+
+        <!-- Gallery View Canvas -->
+        <div v-show="!store.detailViewActive"
+             id="canvas"
+             class="canvas-layer"
+             :class="{ 'smooth-zoom': store.isZooming }"
+             :style="{ transform: store.canvasTransform }">
+
+          <!-- Status Section Separators -->
+          <div
+            v-for="sep in store.filteredSeparators"
+            :key="sep.label"
+            class="section-separator"
+            :style="{
+              top: sep.top + 'px',
+              left: sep.left + 'px',
+              width: sep.width + 'px',
+              '--sep-color': sep.color
+            }"
+          >
+            <div class="separator-line"></div>
+            <div class="separator-label">{{ sep.label }}</div>
+            <div class="separator-line"></div>
+          </div>
+
+          <!-- Connection lines (behind cards - z-index: 0) -->
+          <svg class="connector-lines" xmlns="http://www.w3.org/2000/svg">
+            <ConnectionLine
+              v-for="conn in validConnections"
+              :key="'conn-' + conn.id"
+              :x1="getConnectionStart(conn.parentId).x"
+              :y1="getConnectionStart(conn.parentId).y"
+              :x2="getConnectionEnd(conn.id).x"
+              :y2="getConnectionEnd(conn.id).y"
+              :connection-type-key="conn.connectionTypeKey || 'connections.subProject'"
+              :color="getConnectionColor(conn.childProject?.type || 'done')"
+            />
+          </svg>
+
+          <ProjectCard
+            v-for="project in layoutedProjects"
+            :key="project.id"
+            :project="project"
+            :isSubProject="!!project.parentId"
           />
         </div>
-      </Transition>
-
-      <!-- Gallery View Canvas -->
-      <div v-show="!store.detailViewActive"
-           id="canvas"
-           class="canvas-layer"
-           :class="{ 'smooth-zoom': store.isZooming }"
-           :style="{ transform: store.canvasTransform }">
-
-        <!-- Status Section Separators -->
-        <div
-          v-for="sep in store.filteredSeparators"
-          :key="sep.label"
-          class="section-separator"
-          :style="{
-            top: sep.top + 'px',
-            left: sep.left + 'px',
-            width: sep.width + 'px',
-            '--sep-color': sep.color
-          }"
-        >
-          <div class="separator-line"></div>
-          <div class="separator-label">{{ sep.label }}</div>
-          <div class="separator-line"></div>
-        </div>
-
-        <!-- Connection lines (behind cards - z-index: 0) -->
-        <svg class="connector-lines" xmlns="http://www.w3.org/2000/svg">
-          <ConnectionLine
-            v-for="conn in validConnections"
-            :key="'conn-' + conn.id"
-            :x1="getConnectionStart(conn.parentId).x"
-            :y1="getConnectionStart(conn.parentId).y"
-            :x2="getConnectionEnd(conn.id).x"
-            :y2="getConnectionEnd(conn.id).y"
-            :connection-type-key="conn.connectionTypeKey || 'connections.subProject'"
-            :color="getConnectionColor(conn.childProject?.type || 'done')"
-          />
-        </svg>
-
-        <ProjectCard
-          v-for="project in layoutedProjects"
-          :key="project.id"
-          :project="project"
-          :isSubProject="!!project.parentId"
-        />
       </div>
-    </div>
+    </template>
+    
     <AppFooter />
   </div>
 </template>
@@ -73,14 +83,17 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { useGalleryStore } from './stores/gallery'
+import { useProjectsStore } from './stores/projectsStore'
 import AppHeader from './components/AppHeader.vue'
 import Sidebar from './components/Sidebar.vue'
 import ProjectCard from './components/ProjectCard.vue'
 import ConnectionLine from './components/ConnectionLine.vue'
 import ProjectDetail from './components/ProjectDetail.vue'
+import EmptyState from './components/EmptyState.vue'
 import AppFooter from './components/AppFooter.vue'
 
 const store = useGalleryStore()
+const projectsStore = useProjectsStore()
 
 const layoutedProjects = computed(() => store.layoutProjects.projects)
 

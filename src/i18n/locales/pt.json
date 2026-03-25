@@ -257,5 +257,44 @@
       "title": "O DESPERTAR DAS MATAS",
       "description": "Circo e teatro com temas socioambientais na escola pública EMEB Áurea Soares."
     }
+  },
+
+  "empty": {
+    "welcome": {
+      "title": "BEM-VINDO AO SEU CANVAS",
+      "subtitle": "Seu espaço para mapear, conectar e compartilhar projetos ambientais e culturais. Comece agora!"
+    },
+    "features": {
+      "create": {
+        "title": "Crie Projetos",
+        "desc": "Documente iniciativas com detalhes ricos em múltiplos idiomas"
+      },
+      "collab": {
+        "title": "Colabore",
+        "desc": "Convide membros da equipe com diferentes níveis de permissão"
+      },
+      "share": {
+        "title": "Compartilhe",
+        "desc": "Gere links únicos e criativos para compartilhar seu trabalho"
+      },
+      "multilang": {
+        "title": "Multi-idioma",
+        "desc": "Traduções automáticas PT/EN com glossário personalizado"
+      }
+    },
+    "actions": {
+      "login": "ENTRAR / CRIAR CONTA",
+      "create": "CRIAR PRIMEIRO PROJETO"
+    },
+    "hints": {
+      "login": "Faça login para salvar seus projetos e colaborar em tempo real",
+      "create": "Crie seu primeiro projeto agora mesmo!"
+    },
+    "preview": {
+      "label": "SEUS PROJETOS APARECERÃO ASSIM:"
+    },
+    "example": {
+      "axis": "Arte & Cultura"
+    }
   }
 }
