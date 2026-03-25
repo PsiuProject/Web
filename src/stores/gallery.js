@@ -1,17 +1,17 @@
 import { defineStore } from 'pinia'
-import { projectsData } from './data/projects'
+import { useProjectsStore } from './projectsStore'
+import { useAuthStore } from './auth'
+import { useMembersStore } from './membersStore'
 import { createMainViewportState, createMainViewportGetters, createMainViewportActions } from './viewport/mainViewport'
 import { createProjectViewportState, createProjectViewportGetters, createProjectViewportActions } from './viewport/projectViewport'
 import { startViewportDebug, stopViewportDebug, logViewportSnapshot } from './viewport/debug'
 
 export const useGalleryStore = defineStore('gallery', {
   state: () => ({
-    projects: projectsData,
-
     cardSizes: {
-      'card-sm': { width: window.innerWidth * 0.1458, height: window.innerHeight * 0.2963 },
-      'card-md': { width: window.innerWidth * 0.1979, height: window.innerHeight * 0.3889 },
-      'card-lg': { width: window.innerWidth * 0.25, height: window.innerHeight * 0.4815 }
+      'card-sm': { width: 210, height: 280 },
+      'card-md': { width: 280, height: 370 },
+      'card-lg': { width: 360, height: 460 }
     },
 
     calculatedCardSizes: {},
@@ -30,28 +30,38 @@ export const useGalleryStore = defineStore('gallery', {
     detailViewAnimated: false,
 
     animationComplete: false,
-    cardAnimations: {}
+    cardAnimations: {},
+
+    // Drag-and-drop state for card repositioning
+    draggedCardId: null,
+    isDraggingCard: false
   }),
 
   getters: {
     ...createMainViewportGetters(),
     ...createProjectViewportGetters(),
 
+    // Get gallery-formatted projects from the projects store
+    projects() {
+      const projectsStore = useProjectsStore()
+      return projectsStore.galleryProjects
+    },
+
     filteredProjects(state) {
-      let filtered = state.projects
-      
+      let filtered = this.projects
+
       if (state.focusedType) {
         filtered = filtered.filter(p => p.type === state.focusedType)
       }
-      
+
       if (state.activeFilter && state.activeFilter !== 'todos') {
         filtered = filtered.filter(p => p.territory === state.activeFilter)
       }
-      
+
       if (state.activeAxisFilter) {
         filtered = filtered.filter(p => p.axis && p.axis.includes(state.activeAxisFilter))
       }
-      
+
       if (state.activeCategoryFilter) {
         filtered = filtered.filter(p => p.category === state.activeCategoryFilter)
       }
@@ -59,14 +69,14 @@ export const useGalleryStore = defineStore('gallery', {
       if (state.activeYearFilter) {
         filtered = filtered.filter(p => p.year === state.activeYearFilter)
       }
-      
+
       return filtered
     },
 
     projectConnections(state) {
       const filtered = this.filteredProjects
       const filteredIds = new Set(filtered.map(p => p.id))
-      
+
       return filtered
         .filter(p => p.parentId && filteredIds.has(p.parentId))
         .map(p => ({
@@ -80,13 +90,36 @@ export const useGalleryStore = defineStore('gallery', {
 
     getConnectionCount(state) {
       return (projectId) => {
-        return state.projects.filter(p => p.parentId === projectId).length
+        return this.projects.filter(p => p.parentId === projectId).length
+      }
+    },
+
+    // Check if current user can edit a project
+    canEditProject() {
+      return (project) => {
+        const auth = useAuthStore()
+        if (!auth.isLoggedIn) return false
+        if (project.owner_id === auth.userId) return true
+        const members = useMembersStore()
+        return members.isEditor(project.id, auth.userId)
+      }
+    },
+
+    // Check if current user can view a project
+    canViewProject() {
+      return (project) => {
+        if (project.privacy === 'public' || project.privacy === 'link_only') return true
+        const auth = useAuthStore()
+        if (!auth.isLoggedIn) return false
+        if (project.owner_id === auth.userId) return true
+        const members = useMembersStore()
+        return !!members.getUserRole(project.id, auth.userId)
       }
     },
 
     layoutProjects(state) {
       const filtered = this.filteredProjects
-      
+
       const PADDING = 100
       const VERTICAL_GAP = 150
       const SECTION_GAP = 350
@@ -101,14 +134,14 @@ export const useGalleryStore = defineStore('gallery', {
       }
 
       const sections = {
-        active: { label: 'EM EXECUÇÃO', top: 150, projects: [], color: '#ff5f1f' },
+        active: { label: 'EM EXECUCAO', top: 150, projects: [], color: '#ff5f1f' },
         pipeline: { label: 'PIPELINE / ESCRITA', top: 0, projects: [], color: '#6a7d5b' },
-        done: { label: 'CONCLUÍDOS', top: 0, projects: [], color: '#b55d3a' }
+        done: { label: 'CONCLUIDOS', top: 0, projects: [], color: '#b55d3a' }
       }
 
       const rootProjects = filtered.filter(p => !p.parentId)
       const subProjects = filtered.filter(p => p.parentId)
-      
+
       rootProjects.forEach(p => {
         if (sections[p.type]) {
           sections[p.type].projects.push(p)
@@ -116,9 +149,8 @@ export const useGalleryStore = defineStore('gallery', {
       })
 
       const positionedProjects = []
-      
       const occupiedRects = []
-      
+
       const checkCollision = (left, top, width, height) => {
         const padding = 10
         for (const rect of occupiedRects) {
@@ -133,44 +165,33 @@ export const useGalleryStore = defineStore('gallery', {
         }
         return false
       }
-      
+
       const findNextAvailablePosition = (width, height, startY) => {
         let testTop = startY
         let testLeft = PADDING
-        const maxX = window.innerWidth * 2
+        const maxX = 3000
         let attempts = 0
         const maxAttempts = 1000
-        
+
         while (attempts < maxAttempts) {
           if (!checkCollision(testLeft, testTop, width, height)) {
             return { left: testLeft, top: testTop }
           }
-          
           testLeft += width + HORIZONTAL_GAP
-          
           if (testLeft + width > maxX) {
             testLeft = PADDING
             testTop += 50
           }
-          
           attempts++
         }
-        
         return { left: PADDING, top: testTop }
       }
-      
+
       const markOccupied = (left, top, width, height) => {
-        occupiedRects.push({
-          left,
-          top,
-          right: left + width,
-          bottom: top + height
-        })
+        occupiedRects.push({ left, top, right: left + width, bottom: top + height })
       }
 
       let currentSectionTop = sections.active.top
-
-      const maxCardsPerRow = 100
 
       Object.entries(sections).forEach(([type, section]) => {
         if (section.projects.length === 0) return
@@ -187,83 +208,73 @@ export const useGalleryStore = defineStore('gallery', {
         let rowLeft = PADDING
         let maxRowHeight = 0
         let cardsInRow = 0
-        const maxCardsPerRow = 100
 
         sortedProjects.forEach((project) => {
           const dims = getCardDims(project)
           const cardWidth = dims.w
           const cardHeight = dims.h
-          
+
           let left = rowLeft
           let top = rowTop
-          
+
           if (checkCollision(left, top, cardWidth, cardHeight)) {
             const nextPos = findNextAvailablePosition(cardWidth, cardHeight, rowTop)
             left = nextPos.left
             top = nextPos.top
           }
-          
+
           positionedProjects.push({
             ...project,
             computedPosition: { left, top }
           })
-          
+
           markOccupied(left, top, cardWidth, cardHeight)
-          
+
           rowLeft = left + cardWidth + HORIZONTAL_GAP
           maxRowHeight = Math.max(maxRowHeight, cardHeight)
           cardsInRow++
-          
+
           const children = subProjects.filter(sp => sp.parentId === project.id)
           let totalChildrenHeight = 0
-          
+
           if (children.length > 0) {
             const childStartTop = top + cardHeight + SUB_PROJECT_GAP
             let childTop = childStartTop
             let childLeft = left
             let rowChildrenHeight = 0
-            
+
             children.forEach((child) => {
               const childDims = getCardDims(child)
               const childWidth = childDims.w
               const childHeight = childDims.h
-              
+
               if (checkCollision(childLeft, childTop, childWidth, childHeight)) {
                 const nextPos = findNextAvailablePosition(childWidth, childHeight, childTop)
                 childLeft = nextPos.left
                 childTop = nextPos.top
               }
-              
+
               positionedProjects.push({
                 ...child,
                 computedPosition: { left: childLeft, top: childTop }
               })
-              
+
               markOccupied(childLeft, childTop, childWidth, childHeight)
-              
+
               rowChildrenHeight = Math.max(rowChildrenHeight, childHeight)
               totalChildrenHeight = Math.max(totalChildrenHeight, childTop - childStartTop + childHeight)
-              
               childLeft += childWidth + HORIZONTAL_GAP
             })
           }
-          
+
           const cardTotalHeight = cardHeight + totalChildrenHeight + (children.length > 0 ? SUB_PROJECT_GAP : 0)
           maxRowHeight = Math.max(maxRowHeight, cardTotalHeight)
-          
-          if (cardsInRow >= maxCardsPerRow) {
-            cardsInRow = 0
-            rowTop += maxRowHeight + VERTICAL_GAP
-            maxRowHeight = 0
-            rowLeft = PADDING
-          }
         })
 
         let maxY = currentSectionTop
         occupiedRects.forEach(rect => {
           maxY = Math.max(maxY, rect.bottom)
         })
-        
         currentSectionTop = maxY + SECTION_GAP
       })
 
@@ -276,9 +287,9 @@ export const useGalleryStore = defineStore('gallery', {
     filteredSeparators(state) {
       const layout = this.layoutProjects
       const sections = {
-        active: { label: 'EM EXECUÇÃO', color: '#ff5f1f', projects: [] },
+        active: { label: 'EM EXECUCAO', color: '#ff5f1f', projects: [] },
         pipeline: { label: 'PIPELINE / ESCRITA', color: '#6a7d5b', projects: [] },
-        done: { label: 'CONCLUÍDOS', color: '#b55d3a', projects: [] }
+        done: { label: 'CONCLUIDOS', color: '#b55d3a', projects: [] }
       }
 
       layout.projects.forEach(p => {
@@ -290,7 +301,7 @@ export const useGalleryStore = defineStore('gallery', {
       const separators = []
       Object.entries(sections).forEach(([type, section]) => {
         if (section.projects.length > 0) {
-          const topProject = section.projects.reduce((min, p) => 
+          const topProject = section.projects.reduce((min, p) =>
             p.computedPosition.top < min.computedPosition.top ? p : min
           )
           separators.push({
@@ -298,7 +309,7 @@ export const useGalleryStore = defineStore('gallery', {
             color: section.color,
             top: topProject.computedPosition.top - 50,
             left: 0,
-            width: window.innerWidth * 1.3542
+            width: 2600
           })
         }
       })
@@ -338,24 +349,16 @@ export const useGalleryStore = defineStore('gallery', {
 
     triggerEntryAnimation() {
       const layout = this.layoutProjects
-
-      console.log('🎯 Initial Layout:', {
-        projectCount: layout.projects.length,
-        firstProject: layout.projects[0]?.id,
-        firstProjectPos: layout.projects[0]?.computedPosition
-      })
-
       this.centerOnFirstProject()
 
       setTimeout(() => {
         this.centerOnFirstProject()
-        logViewportSnapshot(this, 'AFTER INITIAL CENTERING')
       }, 50)
 
       this.projects.forEach((project, i) => {
         this.cardAnimations[project.id] = {
           opacity: '0',
-          transform: 'translateZ(' + (-window.innerWidth * 0.5208) + 'px)'
+          transform: 'translateZ(-500px)'
         }
         setTimeout(() => {
           this.cardAnimations[project.id] = {
@@ -365,16 +368,6 @@ export const useGalleryStore = defineStore('gallery', {
         }, 50 * i)
       })
       this.animationComplete = true
-
-      setTimeout(() => {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-        console.log('🔍 VIEWPORT DEBUG MODE ACTIVE')
-        console.log('📍 Drag the viewport to where it SHOULD be centered')
-        console.log('📍 Then check the console for "Correct Values for Centering"')
-        console.log('📍 Type: store.stopDebug() to stop logging')
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-        startViewportDebug(this)
-      }, 500)
     },
 
     openDetailView(project) {
@@ -402,36 +395,43 @@ export const useGalleryStore = defineStore('gallery', {
     },
 
     calculateCardSize(project) {
-      const baseWidth = window.innerWidth * 0.1667
-      const padding = window.innerWidth * 0.0208
+      const baseWidth = 240
+      const padding = 30
 
-      const titleLength = project.titleKey ? project.titleKey.length : 20
-      const descLength = project.descriptionKey ? project.descriptionKey.length : 50
+      const titleLength = (project.titleKey || project.title || '').length || 20
+      const descLength = (project.descriptionKey || project.description || '').length || 50
       const metaCount = project.meta ? project.meta.length : 0
       const hasKpi = project.kpiValue ? 1 : 0
-      
+
       const connectionCount = this.getConnectionCount(project.id)
-      const hasParent = project.parentId ? 1 : 0
 
-      const titleHeight = Math.ceil(titleLength / 25) * (window.innerHeight * 0.025)
-      const descHeight = Math.ceil(descLength / 40) * (window.innerHeight * 0.020)
-      const kpiHeight = hasKpi ? window.innerHeight * 0.065 : 0
-      const metaHeight = metaCount * (window.innerHeight * 0.042)
-      const subprojectIndicatorHeight = hasParent ? window.innerHeight * 0.025 : 0
-
-      const baseHeight = window.innerHeight * 0.18
-      const calculatedHeight = baseHeight + titleHeight + descHeight + kpiHeight + metaHeight + subprojectIndicatorHeight + padding
-
+      const titleHeight = Math.ceil(titleLength / 25) * 24
+      const descHeight = Math.ceil(descLength / 40) * 19
+      const kpiHeight = hasKpi ? 62 : 0
+      const metaHeight = metaCount * 40
+      const baseHeight = 170
+      const calculatedHeight = baseHeight + titleHeight + descHeight + kpiHeight + metaHeight + padding
       const connectionBonus = Math.min(connectionCount * 15, 60)
 
-      const width = Math.max(window.innerWidth * 0.1458, Math.min(window.innerWidth * 0.30, baseWidth + Math.floor(descLength / 3) + connectionBonus))
-      const height = Math.max(window.innerHeight * 0.25, Math.min(window.innerHeight * 0.65, calculatedHeight))
+      const width = Math.max(210, Math.min(430, baseWidth + Math.floor(descLength / 3) + connectionBonus))
+      const height = Math.max(240, Math.min(620, calculatedHeight))
 
       return { width, height }
     },
 
     updateCardSize(projectId, dimensions) {
       this.calculatedCardSizes[projectId] = dimensions
+    },
+
+    // Card drag-and-drop for repositioning
+    startCardDrag(cardId) {
+      this.draggedCardId = cardId
+      this.isDraggingCard = true
+    },
+
+    endCardDrag() {
+      this.draggedCardId = null
+      this.isDraggingCard = false
     }
   }
 })

@@ -1,60 +1,310 @@
 <template>
-  <div class="project-detail-canvas" :style="{ transform: canvasTransform }">
+  <div class="project-detail-canvas">
+    <!-- Back button -->
+    <button class="back-button" @click="$emit('close')">
+      <span class="back-arrow">&larr;</span> VOLTAR
+    </button>
+
+    <!-- Active collaborators presence -->
+    <div v-if="realtimeStore.activeUsers.length > 0" class="presence-bar">
+      <div
+        v-for="user in realtimeStore.activeUsers"
+        :key="user.id"
+        class="presence-avatar"
+        :title="user.name"
+      >
+        {{ (user.name || '?').charAt(0).toUpperCase() }}
+      </div>
+      <span class="presence-count">{{ realtimeStore.activeUsers.length }} online</span>
+    </div>
+
     <!-- Central project info -->
-    <div class="detail-node central-node" :style="{ top: '37.04vh', left: '41.67vw' }">
-      <div class="node-header">{{ t(project.titleKey) }}</div>
-      <div class="node-status" :class="'tag-' + project.type">{{ t(project.statusTagKey) }}</div>
-      <p class="node-description">{{ t(project.descriptionKey) }}</p>
-      <button class="back-button" @click="$emit('close')">← VOLTAR</button>
-    </div>
+    <div class="detail-section central-section">
+      <div class="section-row">
+        <div class="detail-node central-node">
+          <div class="node-status" :class="'tag-' + project.type">
+            {{ displayText(project.statusTagKey) }}
+          </div>
 
-    <!-- KPI Node -->
-    <div v-if="project.kpiValue" class="detail-node kpi-node" :style="{ top: '18.52vh', left: '20.83vw' }">
-      <div class="node-header">{{ t(project.kpiLabelKey || 'labels.kpi') }}</div>
-      <div class="node-value">{{ project.kpiValue }}</div>
-      <div v-if="project.kpiDetail" class="node-detail">{{ project.kpiDetail }}</div>
-    </div>
+          <InlineEdit
+            :modelValue="displayText(project.titleKey)"
+            tag="h1"
+            displayClass="detail-title"
+            :canEdit="canEdit"
+            :editedBy="realtimeStore.isFieldBeingEdited('title')?.userName"
+            @save="(val) => saveField('title', val)"
+            @editing="(v) => broadcastEditing('title', v)"
+          />
 
-    <!-- Territory & Axis Node -->
-    <div class="detail-node info-node" :style="{ top: '18.52vh', left: '62.5vw' }">
-      <div class="node-header">LOCALIZAÇÃO</div>
-      <div class="node-item">{{ project.territory }}</div>
-      <div v-if="project.axis" class="node-header" style="margin-top: 1rem;">EIXOS</div>
-      <div v-for="axis in project.axis" :key="axis" class="node-item">{{ axis }}</div>
-    </div>
+          <InlineEdit
+            :modelValue="displayText(project.descriptionKey)"
+            tag="p"
+            displayClass="detail-description"
+            :multiline="true"
+            :canEdit="canEdit"
+            :editedBy="realtimeStore.isFieldBeingEdited('description')?.userName"
+            @save="(val) => saveField('description', val)"
+            @editing="(v) => broadcastEditing('description', v)"
+          />
 
-    <!-- Meta Node -->
-    <div v-if="project.meta && project.meta.length" class="detail-node meta-node" :style="{ top: '55.56vh', left: '20.83vw' }">
-      <div class="node-header">DETALHES</div>
-      <div v-for="item in project.meta" :key="item.labelKey" class="meta-detail">
-        <label>{{ t(item.labelKey) }}</label>
-        <span>{{ item.value }}</span>
+          <!-- KPI -->
+          <div v-if="project.kpiLabelKey" class="kpi-section">
+            <div class="kpi-label">{{ displayText(project.kpiLabelKey) }}</div>
+            <div v-if="project.kpiValue" class="kpi-value">{{ project.kpiValue }}</div>
+            <div v-if="project.kpiDetail" class="kpi-detail">{{ project.kpiDetail }}</div>
+          </div>
+        </div>
+
+        <!-- Info sidebar -->
+        <div class="detail-sidebar">
+          <!-- Territory & Axes -->
+          <div class="detail-node info-node">
+            <div class="node-header">{{ $t('project.location') || 'LOCATION' }}</div>
+            <div class="node-item">{{ project.territory }}</div>
+            <div v-if="project.axis && project.axis.length" class="node-header" style="margin-top: 1rem;">
+              {{ $t('sidebar.axes') || 'AXES' }}
+            </div>
+            <div v-for="axis in project.axis" :key="axis" class="axis-tag">{{ axis }}</div>
+          </div>
+
+          <!-- Meta details -->
+          <div v-if="project.meta && project.meta.length" class="detail-node meta-node">
+            <div class="node-header">{{ $t('project.details') || 'DETAILS' }}</div>
+            <div v-for="item in project.meta" :key="item.labelKey" class="meta-detail">
+              <label>{{ displayText(item.labelKey) }}</label>
+              <span>{{ item.value }}</span>
+            </div>
+          </div>
+
+          <!-- Links -->
+          <div v-if="project.links && project.links.length" class="detail-node links-node">
+            <div class="node-header">LINKS</div>
+            <div class="links-list">
+              <LinkChip
+                v-for="(link, idx) in project.links"
+                :key="idx"
+                :url="link.url"
+                :type="link.type"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Notes Node (placeholder for future expansion) -->
-    <div class="detail-node notes-node" :style="{ top: '55.56vh', left: '62.5vw' }">
-      <div class="node-header">NOTAS</div>
-      <div class="node-content">
-        <p style="opacity: 0.6; font-size: 0.85rem;">Espaço para anotações e links adicionais</p>
+    <!-- Content Blocks Section -->
+    <div class="detail-section content-section">
+      <div class="section-header-bar">
+        <div class="node-header">CONTENT</div>
+        <button
+          v-if="canEdit"
+          class="add-block-btn"
+          @click="showAddBlock = !showAddBlock"
+        >+ Add Block</button>
+      </div>
+
+      <!-- Add block menu -->
+      <div v-if="showAddBlock && canEdit" class="add-block-menu">
+        <button @click="addBlock('text')">
+          <span class="block-icon">T</span> Text
+        </button>
+        <button @click="addBlock('image')">
+          <span class="block-icon">&square;</span> Image
+        </button>
+        <button @click="addBlock('link')">
+          <span class="block-icon">&rarr;</span> Link
+        </button>
+      </div>
+
+      <!-- Content blocks list -->
+      <div class="blocks-list">
+        <div
+          v-for="block in contentBlocks"
+          :key="block.id"
+          class="content-block"
+          :class="'block-' + block.type"
+          @mouseenter="hoveredBlock = block.id"
+          @mouseleave="hoveredBlock = null"
+        >
+          <!-- Text block -->
+          <template v-if="block.type === 'text'">
+            <InlineEdit
+              :modelValue="block.content"
+              tag="div"
+              displayClass="block-text"
+              :multiline="true"
+              :canEdit="canEdit"
+              @save="(val) => updateBlock(block.id, { content: val })"
+            />
+          </template>
+
+          <!-- Image block -->
+          <template v-if="block.type === 'image'">
+            <img v-if="block.url" :src="block.url" :alt="block.content || 'Image'" class="block-image" />
+            <InlineEdit
+              v-if="canEdit"
+              :modelValue="block.url || ''"
+              tag="div"
+              displayClass="block-image-url"
+              placeholder="Paste image URL..."
+              :canEdit="canEdit"
+              @save="(val) => updateBlock(block.id, { url: val })"
+            />
+            <InlineEdit
+              :modelValue="block.content || ''"
+              tag="div"
+              displayClass="block-caption"
+              placeholder="Caption..."
+              :canEdit="canEdit"
+              @save="(val) => updateBlock(block.id, { content: val })"
+            />
+          </template>
+
+          <!-- Link block - auto chip -->
+          <template v-if="block.type === 'link'">
+            <LinkChip v-if="block.url" :url="block.url" :label="block.content" />
+            <InlineEdit
+              v-if="canEdit"
+              :modelValue="block.url || ''"
+              tag="div"
+              displayClass="block-link-url"
+              placeholder="https://..."
+              :canEdit="canEdit"
+              @save="(val) => updateBlock(block.id, { url: val })"
+            />
+            <InlineEdit
+              :modelValue="block.content || ''"
+              tag="div"
+              displayClass="block-link-label"
+              placeholder="Label..."
+              :canEdit="canEdit"
+              @save="(val) => updateBlock(block.id, { content: val })"
+            />
+          </template>
+
+          <!-- Delete block button -->
+          <button
+            v-if="canEdit && hoveredBlock === block.id"
+            class="delete-block-btn"
+            @click.stop="deleteBlock(block.id)"
+          >&times;</button>
+        </div>
+
+        <div v-if="contentBlocks.length === 0" class="no-blocks">
+          <p>No content blocks yet.</p>
+          <p v-if="canEdit" style="opacity: 0.6; font-size: 0.8rem;">Click "+ Add Block" to add text, images, or links.</p>
+        </div>
       </div>
     </div>
 
-    <!-- Connection lines -->
-    <svg class="detail-connections" xmlns="http://www.w3.org/2000/svg">
-      <line v-if="project.kpiValue" x1="800" y1="450" x2="550" y2="280" stroke="var(--color-moss)" stroke-width="2" stroke-dasharray="4,4" opacity="0.4" />
-      <line x1="1000" y1="450" x2="1300" y2="280" stroke="var(--color-moss)" stroke-width="2" stroke-dasharray="4,4" opacity="0.4" />
-      <line v-if="project.meta && project.meta.length" x1="850" y1="550" x2="550" y2="650" stroke="var(--color-moss)" stroke-width="2" stroke-dasharray="4,4" opacity="0.4" />
-      <line x1="1000" y1="550" x2="1300" y2="650" stroke="var(--color-moss)" stroke-width="2" stroke-dasharray="4,4" opacity="0.4" />
-    </svg>
+    <!-- Privacy Settings (owner/editor only) -->
+    <div v-if="canEdit" class="detail-section privacy-section">
+      <div class="detail-node privacy-node">
+        <div class="node-header">PRIVACY SETTINGS</div>
+        <div class="privacy-toggles">
+          <button
+            v-for="opt in privacyOptions"
+            :key="opt.value"
+            class="privacy-btn"
+            :class="{ active: currentPrivacy === opt.value }"
+            @click="setPrivacy(opt.value)"
+          >
+            <span class="privacy-icon">{{ opt.icon }}</span>
+            <span class="privacy-label">{{ opt.label }}</span>
+          </button>
+        </div>
+        <div v-if="currentPrivacy === 'link_only' || currentPrivacy === 'public'" class="share-link">
+          <label>Share Link</label>
+          <div class="share-link-row">
+            <input
+              :value="shareUrl"
+              readonly
+              class="share-input"
+              @click="copyShareLink"
+            />
+            <button class="copy-btn" @click="copyShareLink">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Members Management (owner only) -->
+    <div v-if="isOwner" class="detail-section members-section">
+      <div class="detail-node members-node">
+        <div class="node-header">MANAGE MEMBERS</div>
+
+        <!-- Invite form -->
+        <form @submit.prevent="inviteMember" class="invite-form">
+          <input
+            v-model="inviteEmail"
+            type="email"
+            placeholder="email@example.com"
+            class="invite-input"
+            required
+          />
+          <select v-model="inviteRole" class="invite-role">
+            <option value="viewer">Viewer</option>
+            <option value="editor">Editor</option>
+          </select>
+          <button type="submit" class="invite-btn">Invite</button>
+        </form>
+
+        <!-- Members list -->
+        <div class="members-list">
+          <div v-for="member in members" :key="member.id" class="member-row">
+            <div class="member-info">
+              <div class="member-avatar">{{ member.email.charAt(0).toUpperCase() }}</div>
+              <div>
+                <div class="member-email">{{ member.email }}</div>
+                <div class="member-role-label">{{ member.role }}</div>
+              </div>
+            </div>
+            <div class="member-actions">
+              <select
+                :value="member.role"
+                @change="changeRole(member.id, $event.target.value)"
+                class="role-select"
+              >
+                <option value="viewer">Viewer</option>
+                <option value="editor">Editor</option>
+              </select>
+              <button class="remove-member-btn" @click="removeMember(member.id)">&times;</button>
+            </div>
+          </div>
+          <div v-if="members.length === 0" class="no-members">
+            No members yet. Invite collaborators above.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subprojects -->
+    <div v-if="subprojects.length > 0" class="detail-section subprojects-section">
+      <div class="detail-node">
+        <div class="node-header">SUBPROJECTS ({{ subprojects.length }})</div>
+        <div v-for="sub in subprojects" :key="sub.id" class="subproject-card" @click="$emit('close'); $nextTick(() => galleryStore.openDetailView(sub))">
+          <div class="sub-status" :class="'tag-' + sub.type">{{ displayText(sub.statusTagKey) }}</div>
+          <div class="sub-title">{{ displayText(sub.titleKey) }}</div>
+          <div class="sub-desc">{{ displayText(sub.descriptionKey) }}</div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useGalleryStore } from '../stores/gallery'
+import { useProjectsStore } from '../stores/projectsStore'
+import { useAuthStore } from '../stores/auth'
+import { useMembersStore } from '../stores/membersStore'
+import { useContentBlocksStore } from '../stores/contentBlocksStore'
+import { useRealtimeStore } from '../stores/realtimeStore'
+import InlineEdit from './InlineEdit.vue'
+import LinkChip from './LinkChip.vue'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -65,146 +315,771 @@ const props = defineProps({
 
 defineEmits(['close'])
 
-const canvasTransform = computed(() => {
-  const tx = typeof props.translateX === 'number' ? props.translateX : 0
-  const ty = typeof props.translateY === 'number' ? props.translateY : 0
-  const z = typeof props.zoom === 'number' ? props.zoom : 1
-  return `translate3d(${tx}px, ${ty}px, 0) scale(${z})`
+const galleryStore = useGalleryStore()
+const projectsStore = useProjectsStore()
+const auth = useAuthStore()
+const membersStore = useMembersStore()
+const contentBlocksStore = useContentBlocksStore()
+const realtimeStore = useRealtimeStore()
+
+const showAddBlock = ref(false)
+const hoveredBlock = ref(null)
+const inviteEmail = ref('')
+const inviteRole = ref('viewer')
+const currentPrivacy = ref(props.project.privacy || 'private')
+
+function displayText(value) {
+  if (!value) return ''
+  if (typeof value === 'string' && value.includes('.') && te(value)) {
+    return t(value)
+  }
+  return value
+}
+
+const canEdit = computed(() => galleryStore.canEditProject(props.project))
+const isOwner = computed(() => {
+  if (!auth.isLoggedIn) return false
+  return props.project.owner_id === auth.userId
 })
+
+const subprojects = computed(() => {
+  return galleryStore.projects.filter(p => p.parentId === props.project.id)
+})
+
+const contentBlocks = computed(() => {
+  return contentBlocksStore.getBlocksByProject(props.project.id)
+})
+
+const members = computed(() => {
+  return membersStore.getMembersByProject(props.project.id)
+})
+
+const privacyOptions = [
+  { value: 'public', label: 'Public', icon: '\uD83C\uDF0D' },
+  { value: 'private', label: 'Private', icon: '\uD83D\uDD12' },
+  { value: 'link_only', label: 'Link Only', icon: '\uD83D\uDD17' }
+]
+
+const shareUrl = computed(() => {
+  return `${window.location.origin}/projects/#/p/${props.project.id}`
+})
+
+// Load data on mount
+onMounted(async () => {
+  if (projectsStore.isSupabaseLoaded) {
+    await contentBlocksStore.loadBlocks(props.project.id)
+    contentBlocksStore.subscribeToBlocks(props.project.id)
+
+    if (auth.isLoggedIn) {
+      await membersStore.loadMembers(props.project.id)
+
+      // Join realtime presence
+      realtimeStore.joinChannel(`project-${props.project.id}`, {
+        id: auth.userId,
+        name: auth.userName,
+        avatar: auth.userAvatar
+      })
+    }
+  }
+})
+
+onUnmounted(() => {
+  contentBlocksStore.unsubscribeFromBlocks()
+  realtimeStore.leaveChannel()
+})
+
+async function saveField(field, value) {
+  await projectsStore.updateProject(props.project.id, { [field]: value })
+}
+
+function broadcastEditing(fieldKey, editing) {
+  if (!auth.isLoggedIn) return
+  realtimeStore.broadcastFieldEditing(fieldKey, auth.userId, auth.userName, editing)
+}
+
+async function setPrivacy(privacy) {
+  currentPrivacy.value = privacy
+  await projectsStore.updatePrivacy(props.project.id, privacy)
+}
+
+function copyShareLink() {
+  navigator.clipboard.writeText(shareUrl.value).catch(() => {})
+}
+
+async function addBlock(type) {
+  const defaults = {
+    text: { content: 'New text block...', url: null },
+    image: { content: '', url: '' },
+    link: { content: 'Link', url: 'https://' }
+  }
+  const d = defaults[type]
+  await contentBlocksStore.addBlock(props.project.id, type, d.content, d.url)
+  showAddBlock.value = false
+}
+
+async function updateBlock(blockId, updates) {
+  await contentBlocksStore.updateBlock(blockId, props.project.id, updates)
+}
+
+async function deleteBlock(blockId) {
+  await contentBlocksStore.deleteBlock(blockId, props.project.id)
+}
+
+async function inviteMember() {
+  if (!inviteEmail.value) return
+  await membersStore.inviteMember(props.project.id, inviteEmail.value, inviteRole.value)
+  inviteEmail.value = ''
+}
+
+async function changeRole(memberId, role) {
+  await membersStore.updateRole(memberId, props.project.id, role)
+}
+
+async function removeMember(memberId) {
+  await membersStore.removeMember(memberId, props.project.id)
+}
 </script>
 
 <style scoped>
 .project-detail-canvas {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 125vw;
-  height: 129.63vh;
-  transform-origin: 0 0;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 900px;
+  max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
   z-index: 2;
-  pointer-events: none;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--moss) transparent;
 }
 
+.back-button {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--moss);
+  color: var(--ink);
+  border: none;
+  padding: 8px 16px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  width: fit-content;
+}
+
+.back-button:hover {
+  background: var(--terracotta);
+  transform: translateX(-4px);
+}
+
+.back-arrow {
+  font-size: 1.1rem;
+}
+
+/* Presence bar */
+.presence-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: fit-content;
+}
+
+.presence-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--stencil-orange);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: 'Space Mono', monospace;
+}
+
+.presence-count {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--moss-light);
+  margin-left: 4px;
+}
+
+/* Sections */
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-row {
+  display: flex;
+  gap: 24px;
+}
+
+.detail-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 260px;
+  max-width: 300px;
+}
+
+/* Nodes */
 .detail-node {
-  position: absolute;
   background: rgba(20, 20, 18, 0.95);
-  border: 0.05vw solid var(--color-moss);
-  padding: 1.5rem;
-  min-width: 14.58vw;
-  max-width: 20.83vw;
-  box-shadow: 0 0.74vh 2.96vh rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(0.52vw);
-  pointer-events: auto;
+  border: 1px solid var(--moss);
+  padding: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
 }
 
 .central-node {
-  min-width: 20.83vw;
-  border-width: 0.1vw;
-  border-color: var(--color-terracotta);
+  flex: 1;
+  border-color: var(--terracotta);
+  border-width: 2px;
 }
 
 .node-header {
   font-family: 'Courier New', monospace;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: bold;
-  color: var(--color-moss);
+  color: var(--moss);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin-bottom: 0.75rem;
-  border-bottom: 0.05vw solid var(--color-moss);
-  padding-bottom: 0.5rem;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--moss);
+  padding-bottom: 8px;
 }
 
 .node-status {
   display: inline-block;
-  padding: 0.25rem 0.75rem;
-  font-size: 0.7rem;
+  padding: 4px 12px;
+  font-size: 0.65rem;
   font-weight: bold;
   text-transform: uppercase;
-  margin-bottom: 1rem;
-  border: 0.05vw solid;
+  margin-bottom: 12px;
+  border: 1px solid;
+  font-family: 'Space Mono', monospace;
 }
 
 .tag-active { background: rgba(255, 95, 31, 0.2); border-color: #ff5f1f; color: #ff5f1f; }
 .tag-pipeline { background: rgba(106, 125, 91, 0.2); border-color: #6a7d5b; color: #6a7d5b; }
 .tag-done { background: rgba(181, 93, 58, 0.2); border-color: #b55d3a; color: #b55d3a; }
 
-.node-description {
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: var(--color-paper);
-  margin-bottom: 1.5rem;
+.detail-title {
+  font-size: 2rem;
+  line-height: 1.1;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  color: var(--paper);
 }
 
-.node-value {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: var(--color-terracotta);
-  margin-bottom: 0.5rem;
+.detail-description {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  opacity: 0.85;
+  color: var(--paper);
+  margin-bottom: 16px;
 }
 
-.node-detail {
-  font-size: 0.85rem;
-  opacity: 0.8;
-  color: var(--color-paper);
+/* KPI */
+.kpi-section {
+  background: rgba(106, 125, 91, 0.1);
+  border-left: 3px solid var(--moss);
+  padding: 12px 16px;
+  margin-top: 12px;
 }
 
+.kpi-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--moss-light);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.kpi-value {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.4rem;
+  color: var(--stencil-orange);
+  font-weight: 700;
+}
+
+.kpi-detail {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
+/* Info items */
 .node-item {
-  padding: 0.5rem 0;
-  border-bottom: 0.05vw solid rgba(106, 125, 91, 0.2);
-  color: var(--color-paper);
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(106, 125, 91, 0.2);
+  color: var(--paper);
   font-size: 0.9rem;
 }
 
+.axis-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  background: rgba(106, 125, 91, 0.15);
+  border: 1px solid rgba(106, 125, 91, 0.3);
+  color: var(--moss-light);
+  font-size: 0.7rem;
+  font-family: 'Space Mono', monospace;
+  margin: 2px 4px 2px 0;
+  text-transform: uppercase;
+}
+
+/* Meta */
 .meta-detail {
-  margin-bottom: 0.75rem;
+  margin-bottom: 10px;
 }
 
 .meta-detail label {
   display: block;
-  font-size: 0.7rem;
-  color: var(--color-moss);
+  font-size: 0.65rem;
+  color: var(--moss);
   text-transform: uppercase;
-  margin-bottom: 0.25rem;
+  margin-bottom: 2px;
+  font-family: 'Space Mono', monospace;
 }
 
 .meta-detail span {
-  color: var(--color-paper);
+  color: var(--paper);
   font-size: 0.85rem;
 }
 
-.node-content {
-  color: var(--color-paper);
-  font-size: 0.9rem;
-  line-height: 1.6;
+/* Links */
+.links-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.back-button {
-  background: var(--color-moss);
-  color: var(--color-ink);
+/* Content blocks */
+.section-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-header-bar .node-header {
   border: none;
-  padding: 0.5rem 1rem;
-  font-family: 'Courier New', monospace;
-  font-size: 0.8rem;
-  font-weight: bold;
+  margin: 0;
+  padding: 0;
+}
+
+.add-block-btn {
+  background: rgba(255, 95, 31, 0.15);
+  border: 1px solid rgba(255, 95, 31, 0.3);
+  color: var(--stencil-orange);
+  padding: 6px 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
   cursor: pointer;
+  transition: all 0.2s;
   text-transform: uppercase;
+}
+
+.add-block-btn:hover {
+  background: rgba(255, 95, 31, 0.3);
+}
+
+.add-block-menu {
+  display: flex;
+  gap: 8px;
+}
+
+.add-block-menu button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--moss);
+  color: var(--paper);
+  padding: 8px 14px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
-.back-button:hover {
-  background: var(--color-terracotta);
-  transform: translateX(-0.21vw);
+.add-block-menu button:hover {
+  border-color: var(--terracotta);
+  background: rgba(255, 255, 255, 0.1);
 }
 
-.detail-connections {
+.block-icon {
+  font-size: 0.8rem;
+  color: var(--stencil-orange);
+}
+
+.blocks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.content-block {
+  position: relative;
+  background: rgba(20, 20, 18, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px;
+  transition: border-color 0.2s;
+}
+
+.content-block:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.block-text {
+  color: var(--paper);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.block-image {
+  max-width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+  margin-bottom: 8px;
+}
+
+.block-image-url,
+.block-link-url {
+  font-size: 0.7rem;
+  color: var(--moss-light);
+  font-family: 'Space Mono', monospace;
+}
+
+.block-caption,
+.block-link-label {
+  font-size: 0.8rem;
+  color: var(--paper);
+  opacity: 0.8;
+  margin-top: 4px;
+}
+
+.delete-block-btn {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: -1;
+  top: 8px;
+  right: 8px;
+  background: rgba(255, 50, 50, 0.2);
+  border: 1px solid rgba(255, 50, 50, 0.4);
+  color: #ff4444;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.delete-block-btn:hover {
+  background: rgba(255, 50, 50, 0.4);
+}
+
+.no-blocks {
+  padding: 24px;
+  text-align: center;
+  color: var(--paper);
+  opacity: 0.5;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+/* Privacy */
+.privacy-toggles {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.privacy-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--paper);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Space Mono', monospace;
+}
+
+.privacy-btn:hover {
+  border-color: var(--moss);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.privacy-btn.active {
+  border-color: var(--terracotta);
+  background: rgba(181, 93, 58, 0.15);
+}
+
+.privacy-icon {
+  font-size: 1.2rem;
+}
+
+.privacy-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.share-link label {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--moss-light);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  font-family: 'Space Mono', monospace;
+}
+
+.share-link-row {
+  display: flex;
+  gap: 4px;
+}
+
+.share-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--moss);
+  color: var(--paper);
+  padding: 6px 8px;
+  font-size: 0.75rem;
+  font-family: 'Space Mono', monospace;
+  cursor: pointer;
+}
+
+.copy-btn {
+  background: var(--moss);
+  border: none;
+  color: var(--paper);
+  padding: 6px 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.copy-btn:hover {
+  background: var(--terracotta);
+  color: var(--ink);
+}
+
+/* Members */
+.invite-form {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.invite-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--moss);
+  color: var(--paper);
+  padding: 8px 10px;
+  font-size: 0.8rem;
+}
+
+.invite-input:focus {
+  outline: none;
+  border-color: var(--terracotta);
+}
+
+.invite-role {
+  background: var(--ink);
+  border: 1px solid var(--moss);
+  color: var(--paper);
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-family: 'Space Mono', monospace;
+}
+
+.invite-btn {
+  background: var(--terracotta);
+  border: none;
+  color: var(--ink);
+  padding: 8px 14px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.invite-btn:hover {
+  background: var(--stencil-orange);
+}
+
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.member-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--moss);
+  color: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.member-email {
+  font-size: 0.8rem;
+  color: var(--paper);
+}
+
+.member-role-label {
+  font-size: 0.65rem;
+  color: var(--moss-light);
+  text-transform: uppercase;
+}
+
+.member-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.role-select {
+  background: var(--ink);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--paper);
+  padding: 2px 6px;
+  font-size: 0.7rem;
+}
+
+.remove-member-btn {
+  background: none;
+  border: 1px solid rgba(255, 50, 50, 0.3);
+  color: #ff4444;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.remove-member-btn:hover {
+  background: rgba(255, 50, 50, 0.2);
+}
+
+.no-members {
+  font-size: 0.8rem;
+  color: var(--paper);
+  opacity: 0.4;
+  text-align: center;
+  padding: 12px;
+}
+
+/* Subprojects */
+.subproject-card {
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 6px;
+}
+
+.subproject-card:hover {
+  border-color: var(--terracotta);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sub-status {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.6rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  border: 1px solid;
+  margin-bottom: 6px;
+  font-family: 'Space Mono', monospace;
+}
+
+.sub-title {
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--paper);
+  margin-bottom: 4px;
+}
+
+.sub-desc {
+  font-size: 0.8rem;
+  color: var(--paper);
+  opacity: 0.7;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .section-row {
+    flex-direction: column;
+  }
+
+  .detail-sidebar {
+    max-width: 100%;
+  }
+
+  .project-detail-canvas {
+    width: 100vw;
+    max-width: 100vw;
+    padding: 16px;
+  }
+
+  .privacy-toggles {
+    flex-direction: column;
+  }
+
+  .invite-form {
+    flex-direction: column;
+  }
 }
 </style>

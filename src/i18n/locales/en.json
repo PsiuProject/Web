@@ -13,7 +13,8 @@
     "all": "ALL",
     "territory": "TERRITORY",
     "axis": "AXIS",
-    "category": "CATEGORY"
+    "category": "CATEGORY",
+    "year": "YEAR"
   },
   "territories": {
     "Brasil": "Brazil",
@@ -32,6 +33,12 @@
     "climate": "Climate Justice",
     "restoration": "Restoration",
     "rights": "Rights & Social"
+  },
+  "years": {
+    "2024": "2024",
+    "2025": "2025",
+    "2026": "2026",
+    "2027": "2027"
   },
   "status": {
     "pnab": "In Progress / PNAB",
@@ -64,7 +71,10 @@
     "culturalProduction": "Cultural Production",
     "evolution": "Evolution",
     "facilitator": "Facilitator",
-    "educational": "Educational Activity"
+    "educational": "Educational Activity",
+    "tracking": "Tracker Connection",
+    "partOf": "Part Of",
+    "originatesFrom": "Originates From"
   },
   "footer": {
     "coords": "EG_SA // X: {x} // Y: {y}",
@@ -76,7 +86,8 @@
   "sidebar": {
     "territories": "TERRITORIES",
     "axes": "AXES",
-    "categories": "CATEGORIES"
+    "categories": "CATEGORIES",
+    "years": "YEARS"
   },
   "project": {
     "partners": "Partners",
@@ -100,7 +111,11 @@
     "duration": "Duration",
     "network": "Network",
     "target": "Target",
-    "facilitators": "Facilitators"
+    "facilitators": "Facilitators",
+    "award": "Award",
+    "events": "Events",
+    "format": "Format",
+    "details": "Details"
   },
   "labels": {
     "estimatedImpact": "Estimated Impact",
