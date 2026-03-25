@@ -6,11 +6,15 @@
       :activeTool="activeTool"
       :zoom="zoom"
       :selectedConnectionType="selectedConnectionType"
+      :canUndo="canUndo"
+      :canRedo="canRedo"
+      :canSave="true"
       @update:activeTool="activeTool = $event"
       @update:selectedConnectionType="selectedConnectionType = $event"
       @save="saveCanvas"
       @undo="undo"
       @redo="redo"
+      @export="exportCanvas('png')"
       @zoom-in="zoomIn"
       @zoom-out="zoomOut"
       @zoom-reset="resetZoom"
@@ -27,13 +31,16 @@
       @mouseup="onCanvasMouseUp"
       @mouseleave="onCanvasMouseLeave"
       @wheel="onWheel"
+      @touchstart="onTouchStart"
+      @touchmove="onTouchMove"
+      @touchend="onTouchEnd"
+      @touchcancel="onTouchEnd"
     >
       <!-- Grid Background -->
       <div class="canvas-grid" :style="gridStyle"></div>
 
       <!-- Connection Lines Layer -->
       <svg class="connections-layer">
-        <!-- Arrow marker definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" 
                   refX="9" refY="3.5" orient="auto">
@@ -55,7 +62,6 @@
             :class="{ selected: selectedElementId === connection.id }"
             @click="selectElement(connection)"
           />
-          <!-- Connection label -->
           <foreignObject
             :x="(connection.x1 + connection.x2) / 2 - 50"
             :y="(connection.y1 + connection.y2) / 2 - 12"
@@ -82,46 +88,18 @@
         :class="[
           `type-${element.type}`,
           { selected: selectedElementId === element.id },
+          { 'selected-multi': selectedElements.has(element.id) },
           { dragging: draggingElementId === element.id }
         ]"
         :style="getElementStyle(element)"
         @mousedown.stop="onElementMouseDown($event, element)"
         @dblclick.stop="editElement(element)"
       >
-        <!-- Card Element -->
-        <template v-if="element.type === 'card'">
-          <div class="element-card" :class="'status-' + element.content?.status">
-            <div class="card-status-tag">{{ element.content?.status || 'active' }}</div>
-            <h3 class="card-title">{{ element.content?.title || 'Untitled Card' }}</h3>
-            <p class="card-description">{{ element.content?.description || '' }}</p>
-          </div>
-        </template>
-
-        <!-- Text Element -->
-        <template v-else-if="element.type === 'text'">
-          <div class="element-text" v-html="element.content?.html || element.content?.text"></div>
-        </template>
-
-        <!-- Image Element -->
-        <template v-else-if="element.type === 'image'">
-          <img :src="element.content?.url" :alt="element.content?.caption" class="element-image" />
-          <div v-if="element.content?.caption" class="image-caption">{{ element.content.caption }}</div>
-        </template>
-
-        <!-- Link Element -->
-        <template v-else-if="element.type === 'link'">
-          <a :href="element.content?.url" target="_blank" class="element-link">
-            <span class="link-icon">🔗</span>
-            {{ element.content?.label || element.content?.url }}
-          </a>
-        </template>
-
-        <!-- Note Element -->
-        <template v-else-if="element.type === 'note'">
-          <div class="element-note">
-            <div class="note-content">{{ element.content?.text }}</div>
-          </div>
-        </template>
+        <!-- Render element content based on type -->
+        <component 
+          :is="getElementComponent(element.type)" 
+          :content="element.content"
+        />
 
         <!-- Resize handles (when selected and can edit) -->
         <div v-if="selectedElementId === element.id && canEdit" class="resize-handles">
@@ -150,104 +128,12 @@
     </div>
 
     <!-- Properties Panel (when element is selected) -->
-    <div v-if="selectedElement && canEdit" class="properties-panel">
-      <div class="panel-header">
-        <span>{{ $t('editor.properties') }}</span>
-        <button @click="selectedElement = null">×</button>
-      </div>
-      
-      <div class="panel-content">
-        <!-- Title/Text input -->
-        <div v-if="selectedElement.type === 'card' || selectedElement.type === 'text'" class="prop-group">
-          <label>{{ $t('editor.title') }}</label>
-          <input 
-            v-model="selectedElement.content.title" 
-            @change="updateElement(selectedElement)"
-            class="prop-input"
-          />
-        </div>
-
-        <!-- Description textarea -->
-        <div v-if="selectedElement.type === 'card'" class="prop-group">
-          <label>{{ $t('editor.description') }}</label>
-          <textarea 
-            v-model="selectedElement.content.description"
-            @change="updateElement(selectedElement)"
-            class="prop-textarea"
-            rows="3"
-          ></textarea>
-        </div>
-
-        <!-- Status selector -->
-        <div v-if="selectedElement.type === 'card'" class="prop-group">
-          <label>Status</label>
-          <select 
-            v-model="selectedElement.content.status"
-            @change="updateElement(selectedElement)"
-            class="prop-select"
-          >
-            <option value="active">Active</option>
-            <option value="pipeline">Pipeline</option>
-            <option value="done">Done</option>
-          </select>
-        </div>
-
-        <!-- URL input for images/links -->
-        <div v-if="selectedElement.type === 'image' || selectedElement.type === 'link'" class="prop-group">
-          <label>URL</label>
-          <input 
-            v-model="selectedElement.content.url"
-            @change="updateElement(selectedElement)"
-            class="prop-input"
-            placeholder="https://..."
-          />
-        </div>
-
-        <!-- Position inputs -->
-        <div class="prop-row">
-          <div class="prop-group">
-            <label>X</label>
-            <input 
-              type="number"
-              v-model.number="selectedElement.position_x"
-              @change="updateElement(selectedElement)"
-              class="prop-input-small"
-            />
-          </div>
-          <div class="prop-group">
-            <label>Y</label>
-            <input 
-              type="number"
-              v-model.number="selectedElement.position_y"
-              @change="updateElement(selectedElement)"
-              class="prop-input-small"
-            />
-          </div>
-        </div>
-
-        <!-- Size inputs -->
-        <div class="prop-row">
-          <div class="prop-group">
-            <label>W</label>
-            <input 
-              type="number"
-              v-model.number="selectedElement.width"
-              @change="updateElement(selectedElement)"
-              class="prop-input-small"
-            />
-          </div>
-          <div class="prop-group">
-            <label>H</label>
-            <input 
-              type="number"
-              v-model.number="selectedElement.height"
-              @change="updateElement(selectedElement)"
-              class="prop-input-small"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+    <PropertiesPanel
+      v-if="selectedElement && canEdit"
+      :element="selectedElement"
+      @update="updateElement"
+      @close="selectedElement = null"
+    />
 
     <!-- Edit mode indicator -->
     <div v-if="!canEdit" class="read-only-badge">
@@ -257,57 +143,115 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../../stores/auth'
 import { useGalleryStore } from '../../stores/gallery'
+import { useRealtimeStore } from '../../stores/realtimeStore'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
 import EditorToolbar from './EditorToolbar.vue'
+import { useCanvasElements } from './composables/useCanvasElements'
+import { useCanvasHistory } from './composables/useCanvasHistory'
+import { useCanvasZoom } from './composables/useCanvasZoom'
+import { CONNECTION_TYPES, getStrokePattern, hasArrow } from './utils/connectionTypes'
+
+// Import element components
+import CardElement from './elements/CardElement.vue'
+import TextElement from './elements/TextElement.vue'
+import ImageElement from './elements/ImageElement.vue'
+import LinkElement from './elements/LinkElement.vue'
+import NoteElement from './elements/NoteElement.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
 const galleryStore = useGalleryStore()
+const realtimeStore = useRealtimeStore()
 
 const props = defineProps({
   projectId: { type: String, required: true },
   canEdit: { type: Boolean, default: false }
 })
 
-// State
+// Use composables
+const {
+  elements,
+  connections,
+  selectedElement,
+  selectedElementId,
+  selectedElements,
+  selectElement,
+  createElement,
+  updateElement: updateElementBase,
+  deleteElement: deleteElementBase,
+  duplicateElement,
+  buildConnections,
+  loadElements: loadElementsBase,
+  saveElements,
+  getDefaultContent,
+  getDefaultSize,
+  getConnectionColor,
+  clearSelection
+} = useCanvasElements(props.projectId)
+
+const {
+  addToHistory,
+  undo: undoHistory,
+  redo: redoHistory,
+  canUndo,
+  canRedo
+} = useCanvasHistory(elements, saveElements)
+
+const {
+  zoom,
+  isDragging,
+  gridStyle,
+  zoomIn,
+  zoomOut,
+  resetZoom,
+  startDrag,
+  updateDrag,
+  endDrag,
+  onTouchStart,
+  onTouchMove,
+  onTouchEnd
+} = useCanvasZoom(1)
+
+// Component state
 const canvasRef = ref(null)
 const isEditing = ref(false)
-const activeTool = ref('select') // select, card, text, image, link, note, connection
-const zoom = ref(1)
+const activeTool = ref('select')
 const selectedConnectionType = ref('subProject')
-
-const elements = ref([])
-const connections = ref([])
-const selectedElement = ref(null)
-const selectedElementId = ref(null)
 const draggingElementId = ref(null)
 const isCreatingElement = ref(false)
 const dragStartPos = ref({ x: 0, y: 0 })
 const dragCurrentPos = ref({ x: 0, y: 0 })
-const isDragging = ref(false)
 const resizingElement = ref(null)
 const resizeHandle = ref(null)
 const showConnectionLabels = ref(true)
 const isLoading = ref(true)
 const saveTimer = ref(null)
+const isShiftPressed = ref(false)
 
 // Computed
-const gridStyle = computed(() => ({
-  transform: `scale(${zoom.value})`,
-  backgroundSize: `${50 * zoom.value}px ${50 * zoom.value}px`
-}))
-
 const dragPreviewStyle = computed(() => ({
   left: `${dragCurrentPos.value.x}px`,
   top: `${dragCurrentPos.value.y}px`,
   transform: `scale(${zoom.value})`
 }))
 
-// Methods
+// Element component mapping
+function getElementComponent(type) {
+  const components = {
+    card: CardElement,
+    text: TextElement,
+    image: ImageElement,
+    link: LinkElement,
+    note: NoteElement
+  }
+  return components[type] || TextElement
+}
+
+// Styles
 function getElementStyle(element) {
   return {
     left: `${element.position_x}px`,
@@ -319,20 +263,8 @@ function getElementStyle(element) {
   }
 }
 
-function getStrokePattern(type) {
-  const patterns = {
-    solid: 'none',
-    dashed: '10,5',
-    dotted: '3,3'
-  }
-  const connType = CONNECTION_TYPES.find(ct => ct.name === type)
-  return patterns[connType?.stroke_pattern || 'solid']
-}
-
 function getArrowMarker(type) {
-  const connType = CONNECTION_TYPES.find(ct => ct.name === type)
-  if (connType?.arrow_style === 'none') return ''
-  return 'url(#arrowhead)'
+  return hasArrow(type) ? 'url(#arrowhead)' : ''
 }
 
 function getConnectionLabel(type) {
@@ -342,14 +274,18 @@ function getConnectionLabel(type) {
 
 // Mouse handlers
 function onCanvasMouseDown(e) {
-  if (e.button !== 0) return // Only left click
+  if (e.button !== 0) return
   
+  isShiftPressed.value = e.shiftKey
   dragStartPos.value = { x: e.clientX, y: e.clientY }
   
   if (activeTool.value !== 'select') {
     isCreatingElement.value = true
   } else {
-    isDragging.value = true
+    if (!isShiftPressed.value) {
+      clearSelection()
+    }
+    startDrag(e.clientX, e.clientY)
   }
 }
 
@@ -358,8 +294,6 @@ function onCanvasMouseMove(e) {
   
   if (isCreatingElement.value) {
     // Update drag preview position
-  } else if (isDragging.value && activeTool.value === 'select') {
-    // Pan canvas
   } else if (draggingElementId.value) {
     // Move element
     const element = elements.value.find(el => el.id === draggingElementId.value)
@@ -370,46 +304,62 @@ function onCanvasMouseMove(e) {
       element.position_y += dy
     }
   } else if (resizingElement.value) {
-    // Resize element
     handleResize(e)
   }
 }
 
 function onCanvasMouseUp(e) {
   if (isCreatingElement.value) {
-    // Create new element at position
     createNewElement(dragCurrentPos.value)
   }
   
   isCreatingElement.value = false
-  isDragging.value = false
+  endDrag()
   draggingElementId.value = null
   resizingElement.value = null
 }
 
 function onCanvasMouseLeave() {
   isCreatingElement.value = false
-  isDragging.value = false
+  endDrag()
 }
 
 function onElementMouseDown(e, element) {
   if (e.button !== 0) return
   
   e.stopPropagation()
-  selectElement(element)
   
-  if (activeTool.value === 'select') {
-    draggingElementId.value = element.id
+  if (isShiftPressed.value) {
+    toggleMultiSelect(element)
+  } else {
+    selectElement(element)
+    
+    if (activeTool.value === 'select') {
+      draggingElementId.value = element.id
+    }
   }
 }
 
+function toggleMultiSelect(element) {
+  if (selectedElements.value.has(element.id)) {
+    selectedElements.value.delete(element.id)
+    if (selectedElementId.value === element.id) {
+      selectedElementId.value = null
+      selectedElement.value = null
+    }
+  } else {
+    selectedElements.value.add(element.id)
+    selectElement(element)
+  }
+}
+
+// Zoom
 function onWheel(e) {
   if (e.ctrlKey || e.metaKey) {
     e.preventDefault()
     const delta = e.deltaY > 0 ? -0.1 : 0.1
     const newZoom = Math.max(0.25, Math.min(3, zoom.value + delta))
     
-    // Zoom towards cursor position
     if (canvasRef.value) {
       const rect = canvasRef.value.getBoundingClientRect()
       const mouseX = e.clientX - rect.left
@@ -418,7 +368,6 @@ function onWheel(e) {
       const scaleChange = newZoom / zoom.value
       zoom.value = newZoom
       
-      // Adjust scroll to keep mouse position stable
       canvasRef.value.scrollLeft += mouseX * (scaleChange - 1)
       canvasRef.value.scrollTop += mouseY * (scaleChange - 1)
     }
@@ -426,72 +375,27 @@ function onWheel(e) {
 }
 
 // Element operations
-function selectElement(element) {
-  selectedElement.value = element
-  selectedElementId.value = element?.id || null
-}
-
 function createNewElement(position) {
-  const newElement = {
-    id: crypto.randomUUID(),
-    project_id: props.projectId,
-    type: activeTool.value,
-    content: getDefaultContent(activeTool.value),
-    position_x: position.x / zoom.value,
-    position_y: position.y / zoom.value,
-    width: getDefaultSize(activeTool.value).width,
-    height: getDefaultSize(activeTool.value).height,
-    rotation: 0,
-    z_index: elements.value.length,
-    created_by: auth.userId
-  }
-  
-  elements.value.push(newElement)
-  selectElement(newElement)
+  const newElement = createElement(activeTool.value, position, zoom.value)
+  addToHistory('create', newElement.id, null, newElement)
   activeTool.value = 'select'
-}
-
-function getDefaultContent(type) {
-  switch(type) {
-    case 'card': return { title: '', description: '', status: 'active' }
-    case 'text': return { text: 'New text block', html: '<p>New text block</p>' }
-    case 'image': return { url: '', caption: '' }
-    case 'link': return { url: 'https://', label: '' }
-    case 'note': return { text: 'Note text...' }
-    default: return {}
-  }
-}
-
-function getDefaultSize(type) {
-  const sizes = {
-    card: { width: 300, height: 200 },
-    text: { width: 400, height: 100 },
-    image: { width: 400, height: 300 },
-    link: { width: 300, height: 60 },
-    note: { width: 250, height: 150 }
-  }
-  return sizes[type] || { width: 300, height: 200 }
+  saveCanvas()
 }
 
 function updateElement(element) {
-  // Mark for saving
+  updateElementBase(element)
   saveCanvas()
 }
 
 function deleteElement(element) {
-  const index = elements.value.findIndex(el => el.id === element.id)
-  if (index > -1) {
-    elements.value.splice(index, 1)
-    selectedElement.value = null
-    selectedElementId.value = null
-    saveCanvas()
-  }
+  addToHistory('delete', element.id, element, null)
+  deleteElementBase(element)
+  saveCanvas()
 }
 
 function editElement(element) {
   if (!props.canEdit) return
   selectElement(element)
-  // Could open a modal editor here
 }
 
 // Resize
@@ -522,28 +426,13 @@ function handleResize(e) {
     el.position_y += dy
   }
   
-  // Enforce minimum/maximum sizes
   el.width = Math.max(100, Math.min(2000, el.width))
   el.height = Math.max(50, Math.min(2000, el.height))
-}
-
-// Zoom controls
-function zoomIn() {
-  zoom.value = Math.min(3, zoom.value + 0.25)
-}
-
-function zoomOut() {
-  zoom.value = Math.max(0.25, zoom.value - 0.25)
-}
-
-function resetZoom() {
-  zoom.value = 1
 }
 
 // Quick add card
 function quickAddCard(status) {
   activeTool.value = 'card'
-  // User clicks on canvas to place
 }
 
 // Save/Load
@@ -557,103 +446,111 @@ async function loadElements() {
   }
   
   try {
-    const { data, error } = await supabase
-      .from('canvas_elements')
-      .select('*')
-      .eq('project_id', props.projectId)
-      .order('z_index')
-    
-    if (error) throw error
-    
-    elements.value = data || []
-    loadConnections()
-    
-    console.log(`[CanvasEditor] Loaded ${elements.value.length} elements`)
+    await loadElementsBase()
   } catch (err) {
     console.error('[CanvasEditor] Load failed:', err.message)
-    // Show user-friendly error
   } finally {
     isLoading.value = false
   }
 }
 
-function loadConnections() {
-  // Build connections from elements with parent_id
-  // Updates dynamically when elements move
-  connections.value = elements.value
-    .filter(el => el.parent_id && el.type === 'connection')
-    .map(el => {
-      const parent = elements.value.find(p => p.id === el.parent_id)
-      return {
-        id: el.id,
-        x1: parent ? parent.position_x + parent.width / 2 : 0,
-        y1: parent ? parent.position_y + parent.height / 2 : 0,
-        x2: el.position_x + el.width / 2,
-        y2: el.position_y + el.height / 2,
-        type: el.connection_type,
-        color: getConnectionColor(el.connection_type)
-      }
-    })
-}
-
-function getConnectionColor(type) {
-  const connType = CONNECTION_TYPES.find(ct => ct.name === type)
-  return connType?.color || '#b55d3a'
-}
-
 async function saveCanvas() {
   if (!isSupabaseConfigured || !props.canEdit) return
   
-  // Debounce saves to avoid excessive DB writes
   clearTimeout(saveTimer.value)
   saveTimer.value = setTimeout(async () => {
     try {
-      const elementsToSave = elements.value.map(el => ({
-        ...el,
-        updated_at: new Date().toISOString()
-      }))
-      
-      // Bulk upsert for better performance
-      const { error } = await supabase
-        .from('canvas_elements')
-        .upsert(elementsToSave, { 
-          onConflict: 'id',
-          ignoreDuplicates: false
-        })
-      
-      if (error) throw error
-      
-      console.log('[CanvasEditor] Saved', elements.value.length, 'elements')
-      
-      // TODO: Add to history for undo/redo
-      // addToHistory('bulk_update', null, elementsToSave)
+      await saveElements()
     } catch (err) {
       console.error('[CanvasEditor] Save failed:', err.message)
-      // Could show user-friendly error toast here
     }
-  }, 1000) // Wait 1 second after last change before saving
+  }, 1000)
 }
 
-function undo() {
-  // TODO: Implement undo history
-  console.warn('Undo not yet implemented - coming soon!')
+// Undo/Redo
+async function undo() {
+  await undoHistory()
+  buildConnections()
 }
 
-function redo() {
-  // TODO: Implement redo
-  console.warn('Redo not yet implemented - coming soon!')
+async function redo() {
+  await redoHistory()
+  buildConnections()
 }
 
-// Lifecycle
-onMounted(() => {
-  loadElements()
-  isEditing.value = true
-})
+// Keyboard shortcuts
+function handleKeyDown(e) {
+  if (e.key === 'Shift') {
+    isShiftPressed.value = true
+  }
+  
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault()
+    undo()
+  }
+  
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+    e.preventDefault()
+    redo()
+  }
+  
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault()
+      deleteSelectedElements()
+    }
+  }
+  
+  if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+    e.preventDefault()
+    selectAllElements()
+  }
+  
+  if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+    e.preventDefault()
+    duplicateSelected()
+  }
+}
 
-onUnmounted(() => {
-  isEditing.value = false
-  clearTimeout(saveTimer.value)
-})
+function handleKeyUp(e) {
+  if (e.key === 'Shift') {
+    isShiftPressed.value = false
+  }
+}
+
+function deleteSelectedElements() {
+  const toDelete = Array.from(selectedElements.value)
+  toDelete.forEach(id => {
+    const element = elements.value.find(el => el.id === id)
+    if (element) {
+      deleteElement(element)
+    }
+  })
+}
+
+function selectAllElements() {
+  elements.value.forEach(el => {
+    selectedElements.value.add(el.id)
+  })
+  if (elements.value.length > 0) {
+    selectedElement.value = elements.value[elements.value.length - 1]
+    selectedElementId.value = elements.value[elements.value.length - 1].id
+  }
+}
+
+function duplicateSelected() {
+  if (selectedElements.value.size === 0) return
+  
+  selectedElements.value.forEach(id => {
+    const original = elements.value.find(el => el.id === id)
+    if (original) {
+      const duplicate = duplicateElement(original)
+      addToHistory('create', duplicate.id, null, duplicate)
+    }
+  })
+  
+  saveCanvas()
+}
 
 // Expose methods
 defineExpose({
@@ -661,7 +558,147 @@ defineExpose({
   loadElements,
   zoomIn,
   zoomOut,
-  resetZoom
+  resetZoom,
+  undo,
+  redo,
+  exportCanvas
+})
+
+// Export canvas
+async function exportCanvas(format = 'png', quality = 1) {
+  try {
+    const loadingEl = document.createElement('div')
+    loadingEl.className = 'export-loading'
+    loadingEl.innerHTML = '<div>Exporting canvas...</div>'
+    document.body.appendChild(loadingEl)
+    
+    const svgContent = generateCanvasSVG()
+    const blob = new Blob([svgContent], { type: 'image/svg+xml' })
+    const url = URL.createObjectURL(blob)
+    
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `canvas-${props.projectId}-${Date.now()}.${format}`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    
+    document.body.removeChild(loadingEl)
+    console.log('[CanvasEditor] Exported canvas as', format)
+  } catch (err) {
+    console.error('[CanvasEditor] Export failed:', err.message)
+  }
+}
+
+function generateCanvasSVG() {
+  const width = 2000
+  const height = 2000
+  
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`
+  svg += `<rect width="100%" height="100%" fill="#141412"/>`
+  
+  svg += `<defs>`
+  svg += `<pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">`
+  svg += `<path d="M 50 0 L 0 0 0 50" fill="none" stroke="rgba(106,125,91,0.2)" stroke-width="1"/>`
+  svg += `</pattern>`
+  svg += `</defs>`
+  svg += `<rect width="100%" height="100%" fill="url(#grid)"/>`
+  
+  elements.value.forEach(el => {
+    if (el.type === 'card') {
+      svg += `<rect x="${el.position_x}" y="${el.position_y}" width="${el.width}" height="${el.height}" 
+                   fill="rgba(20,20,18,0.95)" stroke="#6a7d5b" stroke-width="1"/>`
+      svg += `<text x="${el.position_x + 10}" y="${el.position_y + 30}" 
+                   fill="#fefefe" font-family="monospace" font-size="14">
+              ${el.content?.title || 'Untitled'}
+              </text>`
+    } else if (el.type === 'text') {
+      svg += `<text x="${el.position_x}" y="${el.position_y}" 
+                   fill="#fefefe" font-family="monospace" font-size="12">
+              ${el.content?.text || ''}
+              </text>`
+    }
+  })
+  
+  connections.value.forEach(conn => {
+    svg += `<line x1="${conn.x1}" y1="${conn.y1}" x2="${conn.x2}" y2="${conn.y2}" 
+               stroke="${conn.color}" stroke-width="3"/>`
+  })
+  
+  svg += `</svg>`
+  return svg
+}
+
+// Real-time sync
+function subscribeToCanvasChanges() {
+  if (!isSupabaseConfigured || !supabase) return
+  
+  const channel = supabase
+    .channel(`canvas-elements-${props.projectId}`)
+    .on('postgres_changes', 
+      {
+        event: '*',
+        schema: 'public',
+        table: 'canvas_elements',
+        filter: `project_id=eq.${props.projectId}`
+      },
+      (payload) => {
+        const { eventType, new: newRecord, old: oldRecord } = payload
+        
+        if (newRecord?.created_by === auth.userId) return
+        
+        if (eventType === 'INSERT') {
+          const exists = elements.value.find(el => el.id === newRecord.id)
+          if (!exists) {
+            elements.value.push(newRecord)
+            buildConnections()
+          }
+        } else if (eventType === 'UPDATE') {
+          const idx = elements.value.findIndex(el => el.id === newRecord.id)
+          if (idx >= 0) {
+            elements.value[idx] = newRecord
+            buildConnections()
+          }
+        } else if (eventType === 'DELETE') {
+          elements.value = elements.value.filter(el => el.id !== oldRecord.id)
+          selectedElements.value.delete(oldRecord.id)
+          buildConnections()
+        }
+      }
+    )
+    .subscribe()
+  
+  console.log('[CanvasEditor] Subscribed to realtime changes')
+}
+
+// Lifecycle
+onMounted(() => {
+  loadElements()
+  isEditing.value = true
+  
+  if (auth.isLoggedIn) {
+    realtimeStore.joinChannel(`canvas-${props.projectId}`, {
+      id: auth.userId,
+      name: auth.userName,
+      avatar: auth.userAvatar
+    })
+    
+    subscribeToCanvasChanges()
+  }
+  
+  window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keyup', handleKeyUp)
+})
+
+onUnmounted(() => {
+  isEditing.value = false
+  clearTimeout(saveTimer.value)
+  
+  realtimeStore.leaveChannel()
+  
+  window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('keyup', handleKeyUp)
 })
 </script>
 
@@ -747,94 +784,10 @@ defineExpose({
   cursor: grabbing;
 }
 
-.element-card {
-  width: 100%;
-  height: 100%;
-  background: rgba(20, 20, 18, 0.95);
-  border: 1px solid var(--moss);
-  padding: 16px;
-  overflow: hidden;
-}
-
-.card-status-tag {
-  display: inline-block;
-  padding: 4px 8px;
-  font-size: 0.6rem;
-  font-weight: bold;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-  font-family: 'Space Mono', monospace;
-}
-
-.status-active .card-status-tag { background: rgba(255, 95, 31, 0.2); color: #ff5f1f; }
-.status-pipeline .card-status-tag { background: rgba(106, 125, 91, 0.2); color: #6a7d5b; }
-.status-done .card-status-tag { background: rgba(181, 93, 58, 0.2); color: #b55d3a; }
-
-.card-title {
-  font-size: 1rem;
-  font-weight: bold;
-  color: var(--paper);
-  margin-bottom: 8px;
-}
-
-.card-description {
-  font-size: 0.8rem;
-  color: var(--paper);
-  opacity: 0.8;
-  line-height: 1.4;
-}
-
-.element-text {
-  width: 100%;
-  height: 100%;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--paper);
-  font-size: 0.9rem;
-  line-height: 1.6;
-}
-
-.element-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.image-caption {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(0, 0, 0, 0.7);
-  color: var(--paper);
-  font-size: 0.75rem;
-  padding: 4px 8px;
-}
-
-.element-link {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: rgba(106, 125, 91, 0.15);
-  border: 1px solid var(--moss);
-  color: var(--paper);
-  text-decoration: none;
-  font-size: 0.85rem;
-}
-
-.element-link:hover {
-  background: rgba(106, 125, 91, 0.3);
-}
-
-.element-note {
-  width: 100%;
-  height: 100%;
-  background: #fef3c7;
-  padding: 12px;
-  color: #1f2937;
-  font-size: 0.9rem;
-  writing-mode: vertical-rl;
+.canvas-element.selected-multi {
+  outline: 2px dashed var(--terracotta);
+  outline-offset: 2px;
+  background: rgba(255, 95, 31, 0.05);
 }
 
 .resize-handles {
@@ -897,89 +850,6 @@ defineExpose({
   text-transform: uppercase;
 }
 
-.properties-panel {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 280px;
-  background: rgba(20, 20, 18, 0.95);
-  border: 2px solid var(--moss);
-  border-radius: 8px;
-  padding: 16px;
-  z-index: 100;
-  backdrop-filter: blur(8px);
-}
-
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--moss);
-}
-
-.panel-header span {
-  font-family: 'Space Mono', monospace;
-  font-size: 0.7rem;
-  color: var(--moss-light);
-  text-transform: uppercase;
-}
-
-.panel-header button {
-  background: none;
-  border: none;
-  color: var(--paper);
-  font-size: 1.2rem;
-  cursor: pointer;
-}
-
-.prop-group {
-  margin-bottom: 12px;
-}
-
-.prop-group label {
-  display: block;
-  font-family: 'Space Mono', monospace;
-  font-size: 0.65rem;
-  color: var(--moss-light);
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-
-.prop-input,
-.prop-textarea,
-.prop-select {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--moss);
-  color: var(--paper);
-  padding: 8px;
-  font-family: inherit;
-  font-size: 0.8rem;
-}
-
-.prop-input:focus,
-.prop-textarea:focus,
-.prop-select:focus {
-  outline: none;
-  border-color: var(--terracotta);
-}
-
-.prop-row {
-  display: flex;
-  gap: 8px;
-}
-
-.prop-input-small {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--moss);
-  color: var(--paper);
-  padding: 6px;
-  font-size: 0.75rem;
-}
-
 .read-only-badge {
   position: absolute;
   bottom: 20px;
@@ -993,7 +863,6 @@ defineExpose({
   text-transform: uppercase;
 }
 
-/* Loading indicator */
 .loading-overlay {
   position: absolute;
   top: 0;
@@ -1031,24 +900,20 @@ defineExpose({
   letter-spacing: 0.1em;
 }
 
-/* Image error handling */
-.element-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.element-image:not([src]) {
-  background: rgba(255, 255, 255, 0.05);
+.export-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.element-image:not([src])::after {
-  content: 'Image not loaded';
-  color: var(--moss-light);
-  font-size: 0.75rem;
+  z-index: 9999;
+  color: var(--paper);
   font-family: 'Space Mono', monospace;
+  font-size: 1.2rem;
+  text-transform: uppercase;
 }
 </style>

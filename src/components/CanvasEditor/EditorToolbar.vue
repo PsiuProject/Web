@@ -71,19 +71,24 @@
       <div class="toolbar-section">
         <div class="section-label">{{ $t('editor.actions') }}</div>
         
-        <button class="action-btn" @click="$emit('save')">
+        <button class="action-btn" @click="$emit('save')" :disabled="!canSave">
           <span class="action-icon">💾</span>
           {{ $t('editor.save') }}
         </button>
         
-        <button class="action-btn" @click="$emit('undo')">
+        <button class="action-btn" @click="$emit('undo')" :disabled="!canUndo">
           <span class="action-icon">↶</span>
           {{ $t('editor.undo') }}
         </button>
         
-        <button class="action-btn" @click="$emit('redo')">
+        <button class="action-btn" @click="$emit('redo')" :disabled="!canRedo">
           <span class="action-icon">↷</span>
           {{ $t('editor.redo') }}
+        </button>
+        
+        <button class="action-btn action-export" @click="$emit('export')">
+          <span class="action-icon">📷</span>
+          {{ $t('editor.export') }}
         </button>
       </div>
 
@@ -110,7 +115,10 @@ const { t } = useI18n()
 defineProps({
   activeTool: { type: String, default: 'select' },
   zoom: { type: Number, default: 1 },
-  selectedConnectionType: { type: String, default: 'subProject' }
+  selectedConnectionType: { type: String, default: 'subProject' },
+  canUndo: { type: Boolean, default: false },
+  canRedo: { type: Boolean, default: false },
+  canSave: { type: Boolean, default: true }
 })
 
 const emit = defineEmits(['update:activeTool', 'update:selectedConnectionType', 'save', 'undo', 'redo', 'zoom-in', 'zoom-out', 'zoom-reset', 'quick-add-card'])

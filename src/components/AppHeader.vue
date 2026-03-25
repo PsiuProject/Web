@@ -204,56 +204,56 @@ async function createProject() {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(0.5vh);
 }
 
 .modal-content {
   background: var(--ink);
-  border: 2px solid var(--moss);
-  padding: 32px;
-  max-width: 600px;
+  border: 0.2vh solid var(--moss);
+  padding: 3vh 2vw;
+  max-width: 60vw;
   width: 90vw;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 1.5vh 4.5vh rgba(0, 0, 0, 0.6);
 }
 
 .modal-title {
   font-family: 'Outfit', sans-serif;
-  font-size: 1.5rem;
+  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
   font-weight: 800;
   text-transform: uppercase;
   color: var(--paper);
-  margin-bottom: 24px;
+  margin-bottom: 2.5vh;
   text-align: center;
 }
 
 .new-project-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 1.5vh;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.7vh;
 }
 
 .form-group label {
   font-family: 'Space Mono', monospace;
-  font-size: 0.7rem;
+  font-size: clamp(0.6rem, 1.2vw, 0.75rem);
   color: var(--moss-light);
   text-transform: uppercase;
 }
 
 .form-input {
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--moss);
+  border: 0.1vh solid var(--moss);
   color: var(--paper);
-  padding: 10px 12px;
+  padding: 1vh 1vw;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: clamp(0.8rem, 1.5vw, 0.95rem);
 }
 
 .form-input:focus {
@@ -263,29 +263,29 @@ async function createProject() {
 
 textarea.form-input {
   resize: vertical;
-  min-height: 80px;
+  min-height: 8vh;
 }
 
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 1.5vw;
 }
 
 .form-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 8px;
+  gap: 1vw;
+  margin-top: 1vh;
 }
 
 .btn-cancel {
   flex: 1;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 0.1vh solid rgba(255, 255, 255, 0.2);
   color: var(--paper);
-  padding: 12px 16px;
+  padding: 1.2vh 1.5vw;
   font-family: 'Space Mono', monospace;
-  font-size: 0.75rem;
+  font-size: clamp(0.65rem, 1.2vw, 0.8rem);
   cursor: pointer;
   text-transform: uppercase;
 }
@@ -299,9 +299,9 @@ textarea.form-input {
   background: var(--terracotta);
   border: none;
   color: var(--ink);
-  padding: 12px 16px;
+  padding: 1.2vh 1.5vw;
   font-family: 'Space Mono', monospace;
-  font-size: 0.75rem;
+  font-size: clamp(0.65rem, 1.2vw, 0.8rem);
   font-weight: bold;
   cursor: pointer;
   text-transform: uppercase;

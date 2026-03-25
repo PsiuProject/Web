@@ -287,11 +287,17 @@
     },
     "actions": {
       "login": "LOGIN / SIGN UP",
-      "create": "CREATE FIRST PROJECT"
+      "create": "CREATE FIRST PROJECT",
+      "test": "TRY DEMO CANVAS"
     },
     "hints": {
       "login": "Log in to save your projects and collaborate in real-time",
       "create": "Create your first project right now!"
+    },
+    "testCanvas": {
+      "title": "DEMO CANVAS MODE",
+      "subtitle": "Test all features - changes won't be saved",
+      "back": "Back to Welcome"
     },
     "preview": {
       "label": "YOUR PROJECTS WILL APPEAR LIKE THIS:"
@@ -321,7 +327,17 @@
     "title": "Title",
     "description": "Description",
     "readOnly": "Read Only",
-    "editCanvas": "Edit Canvas"
+    "editCanvas": "Edit Canvas",
+    "export": "Export",
+    "multiSelect": "Multi-Select",
+    "shortcuts": {
+      "undo": "Ctrl+Z",
+      "redo": "Ctrl+Y or Ctrl+Shift+Z",
+      "delete": "Delete or Backspace",
+      "selectAll": "Ctrl+A",
+      "duplicate": "Ctrl+D",
+      "zoom": "Ctrl+Scroll"
+    }
   },
 
   "connections": {

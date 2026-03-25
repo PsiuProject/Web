@@ -284,11 +284,17 @@
     },
     "actions": {
       "login": "ENTRAR / CRIAR CONTA",
-      "create": "CRIAR PRIMEIRO PROJETO"
+      "create": "CRIAR PRIMEIRO PROJETO",
+      "test": "TESTAR CANVAS DEMO"
     },
     "hints": {
       "login": "Faça login para salvar seus projetos e colaborar em tempo real",
       "create": "Crie seu primeiro projeto agora mesmo!"
+    },
+    "testCanvas": {
+      "title": "MODO DEMONSTRAÇÃO",
+      "subtitle": "Teste todos os recursos - alterações não serão salvas",
+      "back": "Voltar ao Início"
     },
     "preview": {
       "label": "SEUS PROJETOS APARECERÃO ASSIM:"
@@ -318,7 +324,17 @@
     "title": "Título",
     "description": "Descrição",
     "readOnly": "Somente Leitura",
-    "editCanvas": "Editar Canvas"
+    "editCanvas": "Editar Canvas",
+    "export": "Exportar",
+    "multiSelect": "Seleção Múltipla",
+    "shortcuts": {
+      "undo": "Ctrl+Z",
+      "redo": "Ctrl+Y ou Ctrl+Shift+Z",
+      "delete": "Delete ou Backspace",
+      "selectAll": "Ctrl+A",
+      "duplicate": "Ctrl+D",
+      "zoom": "Ctrl+Scroll"
+    }
   },
 
   "connections": {

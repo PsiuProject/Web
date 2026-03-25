@@ -12,6 +12,9 @@ const COMPLETE_RE = /[.!?…]\s*$|.{30,}/
 const pending = new Map()
 let timer = null
 
+// Callback for translation status updates (optional, can be set by UI components)
+export let onTranslationStatus = null
+
 function isComplete(text) {
   return COMPLETE_RE.test(text?.trim() ?? '')
 }
@@ -32,10 +35,46 @@ async function flush() {
     const sourceLang = fields.values().next().value.lang
 
     try {
+      // Notify start of translation
+      if (onTranslationStatus) {
+        onTranslationStatus({ type: 'start', projectId, textsCount: texts.length })
+      }
+
       const { data, error } = await supabase.functions.invoke('translate', {
         body: { texts, sourceLang }
       })
-      if (error || !data?.translations) continue
+
+      if (error) {
+        console.error('[translate] Edge Function error:', error)
+        if (onTranslationStatus) {
+          onTranslationStatus({ type: 'error', projectId, error: error.message })
+        }
+        continue
+      }
+
+      if (!data?.translations) {
+        console.warn('[translate] No translations returned')
+        if (onTranslationStatus) {
+          onTranslationStatus({ type: 'error', projectId, error: 'No translations returned' })
+        }
+        continue
+      }
+
+      // Log metadata if available
+      if (data.metadata) {
+        console.log(`[translate] Processed ${data.metadata.textsProcessed} texts (${data.metadata.characterCount} chars)` +
+          (data.metadata.usedFallback ? ' (using LibreTranslate fallback)' : ''))
+        
+        if (onTranslationStatus) {
+          onTranslationStatus({ 
+            type: 'complete', 
+            projectId, 
+            metadata: data.metadata 
+          })
+        }
+      } else if (onTranslationStatus) {
+        onTranslationStatus({ type: 'complete', projectId })
+      }
 
       // Build DB update — each field becomes full JSONB {pt, en}
       const updates = {}
@@ -63,10 +102,19 @@ async function flush() {
       }
 
       if (Object.keys(updates).length) {
-        await supabase.from('projects').update(updates).eq('id', projectId)
+        const { error: updateError } = await supabase.from('projects').update(updates).eq('id', projectId)
+        if (updateError) {
+          console.error('[translate] Failed to save translations:', updateError)
+          if (onTranslationStatus) {
+            onTranslationStatus({ type: 'error', projectId, error: 'Failed to save translations' })
+          }
+        }
       }
     } catch (e) {
-      console.warn('[translate] flush failed', projectId, e)
+      console.error('[translate] Flush failed for project', projectId, e)
+      if (onTranslationStatus) {
+        onTranslationStatus({ type: 'error', projectId, error: e.message })
+      }
     }
   }
 }
@@ -81,10 +129,32 @@ async function flush() {
  */
 export async function saveToGlossary(sourceText, sourceLang, targetText, targetLang) {
   if (!sourceText?.trim() || !targetText?.trim()) return
-  await supabase.from('translation_glossary').upsert(
-    { source_text: sourceText.trim(), source_lang: sourceLang, target_text: targetText.trim(), target_lang: targetLang },
-    { onConflict: 'source_lang,source_text,target_lang' }
-  )
+  
+  const trimmedSource = sourceText.trim()
+  const trimmedTarget = targetText.trim()
+  
+  try {
+    const { data, error } = await supabase.from('translation_glossary').upsert(
+      { 
+        source_text: trimmedSource, 
+        source_lang: sourceLang, 
+        target_text: trimmedTarget, 
+        target_lang: targetLang 
+      },
+      { onConflict: 'source_lang,source_text,target_lang' }
+    )
+    
+    if (error) {
+      console.error('[glossary] Failed to save:', error)
+    } else {
+      console.log(`[glossary] Saved: "${trimmedSource}" (${sourceLang} → ${targetLang})`)
+    }
+    
+    return { success: !error, error }
+  } catch (err) {
+    console.error('[glossary] Exception:', err)
+    return { success: false, error: err }
+  }
 }
 
 /**
@@ -104,22 +174,57 @@ export function queueTranslation(projectId, field, text, lang) {
 /**
  * Queue a content block for translation (stored in project_content_blocks table).
  * @param {string} blockId
- * @param {string} text
+ * @param {string} content
  * @param {string} lang
  */
 export async function translateBlock(blockId, content, lang) {
   // content may be JSONB {pt,en} or raw string — extract source text
   const text = typeof content === 'object' ? content[lang] : content
   if (!text || !isComplete(text)) return
+  
   try {
     const { data, error } = await supabase.functions.invoke('translate', {
       body: { texts: [text], sourceLang: lang }
     })
-    if (error || !data?.translations?.[0]) return
-    await supabase.from('project_content_blocks')
+    
+    if (error) {
+      console.error('[translate] Block translation error:', error)
+      return
+    }
+    
+    if (!data?.translations?.[0]) {
+      console.warn('[translate] No translation returned for block')
+      return
+    }
+    
+    const { error: updateError } = await supabase.from('project_content_blocks')
       .update({ content: data.translations[0] })
       .eq('id', blockId)
+      
+    if (updateError) {
+      console.error('[translate] Failed to save block translation:', updateError)
+    }
   } catch (e) {
-    console.warn('[translate] block failed', blockId, e)
+    console.error('[translate] Block translation failed', blockId, e)
   }
+}
+
+/**
+ * Cancel pending translations for a project (e.g., when navigating away)
+ * @param {string} projectId 
+ */
+export function cancelPendingTranslations(projectId) {
+  if (pending.has(projectId)) {
+    pending.delete(projectId)
+    console.log(`[translate] Cancelled pending translations for project ${projectId}`)
+  }
+}
+
+/**
+ * Clear all pending translations and stop the timer
+ */
+export function clearAllPending() {
+  clearTimeout(timer)
+  pending.clear()
+  console.log('[translate] Cleared all pending translations')
 }
