@@ -1,14 +1,14 @@
 {
-  "name": "earth-guardians",
+  "name": "psiu-project",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://hautlys.github.io/projects/",
+  "homepage": "https://psiuproject.github.io/Web/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && gh-pages -d dist"
+    "deploy": "pnpm run build && gh-pages -d dist"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.100.0",
