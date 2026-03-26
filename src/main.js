@@ -1,27 +1,49 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import i18n from './i18n'
+import router from './router'
 import './style.css'
 import App from './App.vue'
-import { useAuthStore } from './stores/auth'
-import { useProjectsStore } from './stores/projectsStore'
+import { useAuthStore, TEST_PROJECT } from './stores/auth'
+import { mockStore } from './lib/mockData'
 
 const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
+app.use(router)
 app.use(i18n)
 
-// Initialize auth and load projects before mounting
-// Error-safe: app always mounts, even if Supabase is unavailable
 const auth = useAuthStore()
-const projects = useProjectsStore()
 
+// Initialize auth and restore dev mode if applicable
 auth.init()
-  .catch(err => console.warn('[Auth] Init failed, running offline:', err.message))
-  .then(() => projects.loadProjects())
-  .catch(err => console.warn('[Projects] Load failed, using fallback data:', err.message))
   .then(() => {
-    projects.subscribeToRealtime()
-    app.mount('#app')
+    // Check for dev mode and restore mock auth
+    if (auth.checkDevMode()) {
+      const restored = auth.restoreDevAuth()
+      if (restored) {
+        console.log('[Main] Restored dev auth from localStorage')
+        
+        // Initialize mock data stores only if empty
+        const existingProjects = mockStore.getProjects()
+        if (existingProjects.length === 0) {
+          mockStore.reset()
+          console.log('[Main] Initialized mock data stores')
+        } else {
+          console.log('[Main] Using existing mock data')
+        }
+      }
+    }
   })
+  .catch(err => console.warn('[Auth] Init failed, running offline:', err.message))
+  .finally(() => app.mount('#app'))
+
+// Expose mock store utilities for debugging in console
+if (import.meta.env.DEV) {
+  window.mockData = mockStore
+  console.log('[DevTools] Use window.mockData to manage mock data')
+  console.log('[DevTools] Commands:')
+  console.log('  window.mockData.reset() - Reset all mock data')
+  console.log('  window.mockData.clear() - Clear all mock data')
+}

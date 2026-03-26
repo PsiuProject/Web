@@ -20,6 +20,7 @@
             <div class="dropdown-header">
               <span class="dropdown-title">Sign In</span>
             </div>
+            
             <!-- Google Login Button -->
             <div class="auth-google">
               <button class="google-btn" @click="handleGoogleLogin">
@@ -31,36 +32,10 @@
                 </svg>
                 Continue with Google
               </button>
+              <p v-if="isDevMode" class="dev-hint">
+                (Dev mode: mocks login for offline testing)
+              </p>
             </div>
-            <div class="auth-divider">
-              <span>or</span>
-            </div>
-            <!-- Email/Password Fallback -->
-            <form @submit.prevent="handleEmailLogin" class="auth-form">
-              <div class="input-group">
-                <label>Email</label>
-                <input
-                  type="email"
-                  v-model="formEmail"
-                  placeholder="your@email.com"
-                  required
-                />
-              </div>
-              <div class="input-group">
-                <label>Password</label>
-                <input
-                  type="password"
-                  v-model="formPassword"
-                  placeholder="********"
-                  required
-                  minlength="6"
-                />
-              </div>
-              <div v-if="auth.error" class="auth-error">{{ auth.error }}</div>
-              <button type="submit" class="submit-btn">
-                Sign In / Sign Up
-              </button>
-            </form>
           </template>
           <template v-else>
             <div class="dropdown-header logged-in">
@@ -84,13 +59,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
 const showDropdown = ref(false)
-const formEmail = ref('')
-const formPassword = ref('')
+
+const isDevMode = computed(() => {
+  return import.meta.env.DEV || window.location.hostname === 'localhost'
+})
 
 function toggleDropdown() {
   showDropdown.value = !showDropdown.value
@@ -99,17 +76,6 @@ function toggleDropdown() {
 async function handleGoogleLogin() {
   await auth.loginWithGoogle()
   showDropdown.value = false
-}
-
-async function handleEmailLogin() {
-  if (formEmail.value && formPassword.value) {
-    const success = await auth.loginWithEmail(formEmail.value, formPassword.value)
-    if (success) {
-      formEmail.value = ''
-      formPassword.value = ''
-      showDropdown.value = false
-    }
-  }
 }
 
 function handleLogout() {
@@ -278,6 +244,15 @@ onUnmounted(() => {
 .google-btn:hover {
   background: #f5f5f5;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.dev-hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--moss-light);
+  text-align: center;
+  margin-top: 8px;
+  opacity: 0.7;
 }
 
 .auth-divider {

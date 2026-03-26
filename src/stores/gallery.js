@@ -4,7 +4,6 @@ import { useAuthStore } from './auth'
 import { useMembersStore } from './membersStore'
 import { createMainViewportState, createMainViewportGetters, createMainViewportActions } from './viewport/mainViewport'
 import { createProjectViewportState, createProjectViewportGetters, createProjectViewportActions } from './viewport/projectViewport'
-import { startViewportDebug, stopViewportDebug, logViewportSnapshot } from './viewport/debug'
 
 export const useGalleryStore = defineStore('gallery', {
   state: () => ({
@@ -44,31 +43,61 @@ export const useGalleryStore = defineStore('gallery', {
     // Get gallery-formatted projects from the projects store
     projects() {
       const projectsStore = useProjectsStore()
-      return projectsStore.galleryProjects
+      const result = projectsStore.galleryProjects
+      console.log('[Gallery Store] projects getter called, got:', result.length, 'projects')
+      console.log('[Gallery Store] projects:', result.map(p => ({ 
+        id: p.id, 
+        title: p.titleKey || p.title, 
+        type: p.type,
+        owner_id: p.owner_id,
+        parentId: p.parentId 
+      })))
+      return result
     },
 
     filteredProjects(state) {
+      const auth = useAuthStore()
+      console.log('[Gallery Store] filteredProjects getter called')
+      console.log('[Gallery Store] this.projects count:', this.projects.length)
+      console.log('[Gallery Store] this.projects:', this.projects.map(p => ({ 
+        id: p.id, 
+        title: p.titleKey || p.title, 
+        type: p.type,
+        owner_id: p.owner_id,
+        parentId: p.parentId,
+        privacy: p.privacy 
+      })))
+      
       let filtered = this.projects
+      console.log('[Gallery Store] Initial filtered:', filtered.length)
 
       if (state.focusedType) {
+        console.log('[Gallery Store] Filtering by focusedType:', state.focusedType)
         filtered = filtered.filter(p => p.type === state.focusedType)
       }
 
       if (state.activeFilter && state.activeFilter !== 'todos') {
+        console.log('[Gallery Store] Filtering by activeFilter:', state.activeFilter)
         filtered = filtered.filter(p => p.territory === state.activeFilter)
       }
 
       if (state.activeAxisFilter) {
+        console.log('[Gallery Store] Filtering by activeAxisFilter:', state.activeAxisFilter)
         filtered = filtered.filter(p => p.axis && p.axis.includes(state.activeAxisFilter))
       }
 
       if (state.activeCategoryFilter) {
+        console.log('[Gallery Store] Filtering by activeCategoryFilter:', state.activeCategoryFilter)
         filtered = filtered.filter(p => p.category === state.activeCategoryFilter)
       }
 
       if (state.activeYearFilter) {
+        console.log('[Gallery Store] Filtering by activeYearFilter:', state.activeYearFilter)
         filtered = filtered.filter(p => p.year === state.activeYearFilter)
       }
+      
+      console.log('[Gallery Store] Final filtered count:', filtered.length)
+      console.log('[Gallery Store] Final filtered:', filtered.map(p => ({ id: p.id, title: p.titleKey || p.title, type: p.type })))
 
       return filtered
     },
@@ -284,6 +313,157 @@ export const useGalleryStore = defineStore('gallery', {
       }
     },
 
+    // Layout only owned projects (for gallery view)
+    layoutOwnedProjects() {
+      return (ownedProjects) => {
+        console.log('[Gallery Store] layoutOwnedProjects called with:', ownedProjects.length, 'projects')
+        console.log('[Gallery Store] ownedProjects:', ownedProjects.map(p => ({ 
+          id: p.id, 
+          title: p.titleKey || p.title, 
+          type: p.type,
+          parentId: p.parentId 
+        })))
+        
+        const PADDING = 100
+        const SECTION_GAP = 350
+        const SUB_PROJECT_GAP = 80
+        const HORIZONTAL_GAP = 100
+
+        const getCardDims = (project) => {
+          const calculated = this.calculatedCardSizes[project.id]
+          if (calculated) return { w: calculated.width, h: calculated.height }
+          const defaultSize = this.cardSizes[project.size] || this.cardSizes['card-md']
+          return { w: defaultSize.width, h: defaultSize.height }
+        }
+
+        const sections = {
+          active: { label: 'EM EXECUCAO', top: 150, projects: [], color: '#ff5f1f' },
+          pipeline: { label: 'PIPELINE / ESCRITA', top: 0, projects: [], color: '#6a7d5b' },
+          done: { label: 'CONCLUIDOS', top: 0, projects: [], color: '#b55d3a' }
+        }
+
+        // Only process root projects (no sub-projects in owned view)
+        ownedProjects.filter(p => !p.parentId).forEach(p => {
+          if (sections[p.type]) {
+            sections[p.type].projects.push(p)
+          }
+        })
+        
+        console.log('[Gallery Store] Sections after filtering:', {
+          active: sections.active.projects.length,
+          pipeline: sections.pipeline.projects.length,
+          done: sections.done.projects.length
+        })
+
+        const positionedProjects = []
+        const occupiedRects = []
+
+        const checkCollision = (left, top, width, height) => {
+          const padding = 10
+          for (const rect of occupiedRects) {
+            if (
+              left < rect.right + padding &&
+              left + width > rect.left - padding &&
+              top < rect.bottom + padding &&
+              top + height > rect.top - padding
+            ) {
+              return true
+            }
+          }
+          return false
+        }
+
+        const findNextAvailablePosition = (width, height, startY) => {
+          let testTop = startY
+          let testLeft = PADDING
+          const maxX = 3000
+          let attempts = 0
+          const maxAttempts = 1000
+
+          while (attempts < maxAttempts) {
+            if (!checkCollision(testLeft, testTop, width, height)) {
+              return { left: testLeft, top: testTop }
+            }
+            testLeft += width + HORIZONTAL_GAP
+            if (testLeft + width > maxX) {
+              testLeft = PADDING
+              testTop += 50
+            }
+            attempts++
+          }
+          return { left: PADDING, top: testTop }
+        }
+
+        const markOccupied = (left, top, width, height) => {
+          occupiedRects.push({ left, top, right: left + width, bottom: top + height })
+        }
+
+        let currentSectionTop = sections.active.top
+
+        Object.entries(sections).forEach(([type, section]) => {
+          if (section.projects.length === 0) {
+            console.log('[Gallery Store] Skipping section', type, '- no projects')
+            return
+          }
+          
+          console.log('[Gallery Store] Processing section', type, 'with', section.projects.length, 'projects')
+
+          section.top = currentSectionTop
+
+          const sortedProjects = [...section.projects].sort((a, b) => {
+            const connA = this.getConnectionCount(a.id)
+            const connB = this.getConnectionCount(b.id)
+            return connB - connA
+          })
+
+          let rowTop = section.top
+          let rowLeft = PADDING
+          let maxRowHeight = 0
+
+          sortedProjects.forEach((project) => {
+            const dims = getCardDims(project)
+            const cardWidth = dims.w
+            const cardHeight = dims.h
+
+            let left = rowLeft
+            let top = rowTop
+
+            if (checkCollision(left, top, cardWidth, cardHeight)) {
+              const nextPos = findNextAvailablePosition(cardWidth, cardHeight, rowTop)
+              left = nextPos.left
+              top = nextPos.top
+            }
+
+            positionedProjects.push({
+              ...project,
+              computedPosition: { left, top }
+            })
+
+            markOccupied(left, top, cardWidth, cardHeight)
+
+            rowLeft = left + cardWidth + HORIZONTAL_GAP
+            maxRowHeight = Math.max(maxRowHeight, cardHeight)
+          })
+
+          let maxY = currentSectionTop
+          occupiedRects.forEach(rect => {
+            maxY = Math.max(maxY, rect.bottom)
+          })
+          currentSectionTop = maxY + SECTION_GAP
+        })
+        
+        console.log('[Gallery Store] layoutOwnedProjects returning:', positionedProjects.length, 'positioned projects')
+        console.log('[Gallery Store] positionedProjects:', positionedProjects.map(p => ({ 
+          id: p.id, 
+          title: p.titleKey || p.title, 
+          type: p.type,
+          computedPosition: p.computedPosition 
+        })))
+
+        return positionedProjects
+      }
+    },
+
     filteredSeparators(state) {
       const layout = this.layoutProjects
       const sections = {
@@ -325,18 +505,6 @@ export const useGalleryStore = defineStore('gallery', {
   actions: {
     ...createMainViewportActions(),
     ...createProjectViewportActions(),
-
-    startDebug() {
-      startViewportDebug(this)
-    },
-
-    stopDebug() {
-      stopViewportDebug()
-    },
-
-    logSnapshot(label) {
-      logViewportSnapshot(this, label)
-    },
 
     focusSection(type) {
       this.centerOnSection(type)

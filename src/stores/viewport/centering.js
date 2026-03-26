@@ -11,24 +11,8 @@
  * @returns {{ translateX: number, translateY: number }}
  */
 export function centerOnPoint(worldX, worldY, zoom, viewportWidth, viewportHeight) {
-  // Transform formula: screenPos = worldPos * zoom + translate
-  // To center: viewportCenter = worldPos * zoom + translate
-  // Therefore: translate = viewportCenter - worldPos * zoom
-  
   const translateX = (viewportWidth / 2) - (worldX * zoom)
   const translateY = (viewportHeight / 2) - (worldY * zoom)
-  
-  console.log('🎯 centerOnPoint:', {
-    input: { worldX, worldY, zoom, viewportWidth, viewportHeight },
-    output: { translateX, translateY },
-    verification: {
-      screenX: worldX * zoom + translateX,
-      screenY: worldY * zoom + translateY,
-      expectedX: viewportWidth / 2,
-      expectedY: viewportHeight / 2
-    }
-  })
-  
   return { translateX, translateY }
 }
 
@@ -55,30 +39,14 @@ export function getCardCenter(position, size) {
  * @returns {{ translateX: number, translateY: number, zoom: number }}
  */
 export function centerOnCard(project, cardSize, zoom, viewportWidth, viewportHeight) {
-  console.log('🎯 centerOnCard called:', {
-    projectId: project.id,
-    hasComputedPosition: !!project.computedPosition,
-    hasPosition: !!project.position,
-    computedPosition: project.computedPosition,
-    position: project.position,
-    cardSize,
-    zoom
-  })
-  
-  // Get card position (prefer computedPosition)
   const position = project.computedPosition || project.position
   
   if (!position) {
-    console.error('❌ No position data for project:', project.id)
+    console.error('[Centering] No position data for project:', project.id)
     return { translateX: 0, translateY: 0, zoom }
   }
   
-  // Calculate card center in world coordinates
   const cardCenter = getCardCenter(position, cardSize)
-  
-  console.log('🎯 Card center calculated:', cardCenter)
-  
-  // Calculate viewport transform to center the card
   const { translateX, translateY } = centerOnPoint(
     cardCenter.x,
     cardCenter.y,
@@ -86,24 +54,6 @@ export function centerOnCard(project, cardSize, zoom, viewportWidth, viewportHei
     viewportWidth,
     viewportHeight
   )
-  
-  console.log('🎯 Final centering result:', {
-    projectId: project.id,
-    position,
-    cardSize,
-    cardCenter,
-    zoom,
-    viewport: { width: viewportWidth, height: viewportHeight },
-    result: { translateX, translateY },
-    verification: {
-      screenX: cardCenter.x * zoom + translateX,
-      screenY: cardCenter.y * zoom + translateY,
-      expectedX: viewportWidth / 2,
-      expectedY: viewportHeight / 2,
-      errorX: Math.abs((cardCenter.x * zoom + translateX) - (viewportWidth / 2)),
-      errorY: Math.abs((cardCenter.y * zoom + translateY) - (viewportHeight / 2))
-    }
-  })
   
   return { translateX, translateY, zoom }
 }

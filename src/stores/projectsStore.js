@@ -3,6 +3,8 @@
 import { defineStore } from 'pinia'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { projectsData as fallbackData } from './data/projects'
+import { useAuthStore } from './auth'
+import { mockStore } from '../lib/mockData'
 
 export const useProjectsStore = defineStore('projects', {
   state: () => ({
@@ -30,7 +32,17 @@ export const useProjectsStore = defineStore('projects', {
 
     // Convert Supabase format to the format the gallery expects
     galleryProjects: (state) => {
-      return state.projects.map(p => ({
+      console.log('[Projects Store] galleryProjects getter called')
+      console.log('[Projects Store] state.projects count:', state.projects.length)
+      console.log('[Projects Store] state.projects:', state.projects.map(p => ({ 
+        id: p.id, 
+        title: p.title, 
+        status: p.status,
+        owner_id: p.owner_id,
+        parent_id: p.parent_id 
+      })))
+      
+      const result = state.projects.map(p => ({
         id: p.id,
         type: p.status,
         size: p.size || 'card-md',
@@ -55,6 +67,22 @@ export const useProjectsStore = defineStore('projects', {
         position_y: p.position_y || 0,
         _raw: p
       }))
+      
+      console.log('[Projects Store] galleryProjects result count:', result.length)
+      console.log('[Projects Store] galleryProjects:', result.map(p => ({ 
+        id: p.id, 
+        title: p.titleKey, 
+        type: p.type,
+        owner_id: p.owner_id,
+        parentId: p.parentId 
+      })))
+      
+      return result
+    },
+
+    isOfflineDev: () => {
+      const auth = useAuthStore()
+      return auth.isOfflineDev
     }
   },
 
@@ -64,20 +92,45 @@ export const useProjectsStore = defineStore('projects', {
       this.loading = true
       this.error = null
 
+      console.log('[Projects] loadProjects called')
+      console.log('[Projects] isOfflineDev:', this.isOfflineDev)
+      console.log('[Projects] isSupabaseConfigured:', isSupabaseConfigured)
+      console.log('[Projects] Current projects count:', this.projects.length)
+
+      // Use mock data in dev mode
+      if (this.isOfflineDev) {
+        const mockProjects = mockStore.getProjects()
+        console.log('[Projects] Loading mock projects:', mockProjects.length)
+        console.log('[Projects] Mock projects:', mockProjects.map(p => ({ id: p.id, title: p.title, owner_id: p.owner_id })))
+        this.projects = mockProjects
+        this.isSupabaseLoaded = true
+        this.loading = false
+        console.log('[Projects] Loaded mock projects for offline testing')
+        return
+      }
+
       if (!isSupabaseConfigured) {
+        console.log('[Projects] Supabase not configured, using fallback')
         this.useFallbackData()
         this.loading = false
         return
       }
 
       try {
+        console.log('[Projects] Fetching from Supabase...')
         const { data, error } = await supabase
           .from('projects')
           .select('*')
           .order('created_at', { ascending: true })
 
-        if (error) throw error
+        if (error) {
+          console.error('[Projects] Supabase error:', error)
+          throw error
+        }
 
+        console.log('[Projects] Supabase returned:', data?.length || 0, 'projects')
+        console.log('[Projects] Supabase data:', data?.map(p => ({ id: p.id, title: p.title, status: p.status, owner_id: p.owner_id })))
+        
         if (data && data.length > 0) {
           this.projects = data
           this.isSupabaseLoaded = true
@@ -110,183 +163,128 @@ export const useProjectsStore = defineStore('projects', {
         axis: p.axis,
         category: p.category,
         year: p.year,
-        parent_id: p.parentId || null,
-        connection_type: p.connectionTypeKey,
         kpi_label: p.kpiLabelKey,
         kpi_value: p.kpiValue,
         kpi_detail: p.kpiDetail,
         meta: p.meta,
-        links: p.links || [],
-        position_x: 0,
-        position_y: 0,
-        owner_id: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        links: p.links,
+        parent_id: p.parentId,
+        connection_type: p.connectionTypeKey,
+        position_x: p.position_x || 0,
+        position_y: p.position_y || 0
       }))
-      this.isSupabaseLoaded = false
+      this.isSupabaseLoaded = true
+      this.loading = false
     },
 
     // Create a new project
     async createProject(projectData) {
-      // Auto-inject owner_id from current auth session
-      const { data: { user } } = await supabase.auth.getUser()
-      const { data, error } = await supabase
-        .from('projects')
-        .insert({ ...projectData, owner_id: user?.id })
-        .select()
-        .single()
+      const auth = useAuthStore()
 
-      if (error) {
-        this.error = error.message
-        console.error('[Projects] Create error:', error.message)
-        return null
-      }
-
-      this.projects.push(data)
-      return data
-    },
-
-    // Update a project
-    async updateProject(id, updates) {
-      if (!this.isSupabaseLoaded || !supabase) {
-        // Local-only update for fallback mode
-        const idx = this.projects.findIndex(p => p.id === id)
-        if (idx >= 0) {
-          this.projects[idx] = { ...this.projects[idx], ...updates }
+      // Use mock data in dev mode
+      if (this.isOfflineDev) {
+        const newProject = {
+          id: 'test-project-' + Date.now(),
+          ...projectData,
+          owner_id: auth.userId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
-        return this.projects[idx]
+        const projects = mockStore.getProjects()
+        projects.push(newProject)
+        mockStore.saveProjects(projects)
+        this.projects.push(newProject)
+        return newProject
       }
 
-      const { data, error } = await supabase
-        .from('projects')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single()
+      if (!isSupabaseConfigured) return null
 
-      if (error) {
-        this.error = error.message
-        console.error('[Projects] Update error:', error.message)
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .insert({
+            ...projectData,
+            owner_id: auth.userId
+          })
+          .select()
+          .single()
+
+        if (error) throw error
+        this.projects.push(data)
+        return data
+      } catch (err) {
+        console.error('[Projects] Create error:', err.message)
         return null
       }
-
-      const idx = this.projects.findIndex(p => p.id === id)
-      if (idx >= 0) {
-        this.projects[idx] = data
-      }
-      return data
     },
 
-    // Delete a project
-    async deleteProject(id) {
-      if (!this.isSupabaseLoaded || !supabase) {
-        this.projects = this.projects.filter(p => p.id !== id)
-        return true
-      }
-
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', id)
-
-      if (error) {
-        this.error = error.message
-        return false
-      }
-
-      this.projects = this.projects.filter(p => p.id !== id)
-      return true
-    },
-
-    // Update canvas position for a project
-    async updatePosition(id, posX, posY) {
-      if (!this.isSupabaseLoaded || !supabase) {
-        const idx = this.projects.findIndex(p => p.id === id)
+    // Update an existing project
+    async updateProject(id, updates) {
+      // Use mock data in dev mode
+      if (this.isOfflineDev) {
+        const projects = mockStore.getProjects()
+        const idx = projects.findIndex(p => p.id === id)
         if (idx >= 0) {
-          this.projects[idx].position_x = posX
-          this.projects[idx].position_y = posY
+          projects[idx] = { ...projects[idx], ...updates, updated_at: new Date().toISOString() }
+          mockStore.saveProjects(projects)
+          const localIdx = this.projects.findIndex(p => p.id === id)
+          if (localIdx >= 0) {
+            this.projects[localIdx] = { ...this.projects[localIdx], ...updates }
+          }
         }
         return
       }
 
-      await supabase
-        .from('projects')
-        .update({ position_x: posX, position_y: posY })
-        .eq('id', id)
+      if (!isSupabaseConfigured) return
 
-      const idx = this.projects.findIndex(p => p.id === id)
-      if (idx >= 0) {
-        this.projects[idx].position_x = posX
-        this.projects[idx].position_y = posY
+      try {
+        const { error } = await supabase
+          .from('projects')
+          .update(updates)
+          .eq('id', id)
+
+        if (error) throw error
+
+        const idx = this.projects.findIndex(p => p.id === id)
+        if (idx >= 0) {
+          this.projects[idx] = { ...this.projects[idx], ...updates }
+        }
+      } catch (err) {
+        console.error('[Projects] Update error:', err.message)
       }
     },
 
-    // Update privacy setting
-    async updatePrivacy(id, privacy) {
-      return this.updateProject(id, { privacy })
-    },
-
-    // Generate a funny readable slug and save it to the project
-    async generateShareSlug(id) {
-      const adjectives = [
-        'cosmic','ancient','wild','silent','burning','frozen','golden','shadow',
-        'crystal','thunder','mystic','radiant','emerald','sapphire','dragon',
-        'phoenix','lunar','solar','stellar','nebula','quantum','electric',
-        'velvet','iron','bronze','titan','omega','alpha','zenith','nexus'
-      ]
-      const nouns = [
-        'jaguar','river','forest','volcano','condor','serpent','moon','storm',
-        'root','ember','wolf','eagle','tiger','bear','falcon','panther',
-        'spirit','warrior','guardian','keeper','wanderer','dreamer','vision',
-        'horizon','sunrise','twilight','midnight','comet','meteor','galaxy'
-      ]
-      const connectors = ['of', 'and', 'the', 'vs', 'x']
-      
-      const adj1 = adjectives[Math.floor(Math.random() * adjectives.length)]
-      const adj2 = adjectives[Math.floor(Math.random() * adjectives.length)]
-      const noun = nouns[Math.floor(Math.random() * nouns.length)]
-      const connector = connectors[Math.floor(Math.random() * connectors.length)]
-      const code = Math.random().toString(36).slice(2, 5)
-      
-      // Create funny combinations like: "cosmic-dragon-and-lunar-jaguar-x42"
-      const slug = `${adj1}-${noun}-${connector}-${adj2}-${code}`
-      
-      await this.updateProject(id, { share_slug: slug })
-      return slug
-    },
-
-    // Subscribe to realtime changes - only if Supabase is configured
+    // Subscribe to realtime changes
     subscribeToRealtime() {
+      // No realtime in offline dev mode
+      if (this.isOfflineDev) return
+
       if (!isSupabaseConfigured || !supabase) return
 
       this.realtimeChannel = supabase
-        .channel('projects-realtime')
-        .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'projects' },
-          (payload) => {
-            const { eventType, new: newRecord, old: oldRecord } = payload
+        .channel('projects')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'projects'
+        }, (payload) => {
+          const { eventType, new: newRecord, old: oldRecord } = payload
 
-            if (eventType === 'INSERT') {
-              const exists = this.projects.find(p => p.id === newRecord.id)
-              if (!exists) {
-                this.projects.push(newRecord)
-              }
-            } else if (eventType === 'UPDATE') {
-              const idx = this.projects.findIndex(p => p.id === newRecord.id)
-              if (idx >= 0) {
-                this.projects[idx] = newRecord
-              }
-            } else if (eventType === 'DELETE') {
-              this.projects = this.projects.filter(p => p.id !== oldRecord.id)
-            }
+          if (eventType === 'INSERT') {
+            this.projects.push(newRecord)
+          } else if (eventType === 'UPDATE') {
+            const idx = this.projects.findIndex(p => p.id === newRecord.id)
+            if (idx >= 0) this.projects[idx] = newRecord
+          } else if (eventType === 'DELETE') {
+            this.projects = this.projects.filter(p => p.id !== oldRecord.id)
           }
-        )
+        })
         .subscribe()
     },
 
     // Unsubscribe from realtime
     unsubscribeFromRealtime() {
-      if (this.realtimeChannel && supabase) {
+      if (this.realtimeChannel) {
         supabase.removeChannel(this.realtimeChannel)
         this.realtimeChannel = null
       }

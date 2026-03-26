@@ -1,0 +1,1 @@
+var e=!1;console.warn(`[Supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY — running in offline/fallback mode`);var t=null;export{t as n,e as t};

@@ -73,22 +73,6 @@ export function createProjectViewportActions() {
       this.translateX = viewportCenterX - (nodeCenterX * detailZoom)
       this.translateY = viewportCenterY - (nodeCenterY * detailZoom)
       this.zoom = detailZoom
-      
-      console.log('🎯 centerOnProject (detail view):', {
-        projectId: project.id,
-        detailCanvas: { width: detailCanvasWidth, height: detailCanvasHeight },
-        centralNode: { left: centralNodeLeft, top: centralNodeTop, width: centralNodeWidth, height: centralNodeHeight },
-        nodeCenter: { x: nodeCenterX, y: nodeCenterY },
-        viewport: { width: window.innerWidth, height: window.innerHeight },
-        zoom: detailZoom,
-        result: { translateX: this.translateX, translateY: this.translateY },
-        verification: {
-          screenX: nodeCenterX * detailZoom + this.translateX,
-          screenY: nodeCenterY * detailZoom + this.translateY,
-          expectedX: viewportCenterX,
-          expectedY: viewportCenterY
-        }
-      })
     }
   }
 }

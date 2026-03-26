@@ -4,12 +4,13 @@
     :id="project.id"
     :data-type="project.type"
     class="project-card"
-    :class="[project.size, { 'sub-project': isSubProject, 'is-dragging': isDragging }]"
+    :class="[project.size, { 'sub-project': isSubProject, 'is-dragging': isDragging, 'selected': isSelected }]"
     :style="cardStyles"
     @click="handleCardClick"
+    @dblclick="$emit('dblclick', $event)"
     @mouseenter="isHovered = true"
     @mouseleave="isHovered = false"
-    @mousedown.stop="canDrag && handleDragStart($event)"
+    @mousedown.stop="onMouseDown"
     :draggable="canDrag"
   >
     <!-- Privacy badge -->
@@ -73,6 +74,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useGalleryStore } from '../stores/gallery'
 import { useProjectsStore } from '../stores/projectsStore'
@@ -85,12 +87,19 @@ const { t, te, locale } = useI18n()
 
 const props = defineProps({
   project: { type: Object, required: true },
-  isSubProject: { type: Boolean, default: false }
+  isSubProject: { type: Boolean, default: false },
+  clickToNavigate: { type: Boolean, default: false },
+  // Canvas mode props
+  isSelected: { type: Boolean, default: false },
+  canvasMode: { type: Boolean, default: false }
 })
+
+defineEmits(['dragstart', 'click', 'dblclick'])
 
 const store = useGalleryStore()
 const projectsStore = useProjectsStore()
 const auth = useAuthStore()
+const router = useRouter()
 const cardRef = ref(null)
 const isHovered = ref(false)
 const isDragging = ref(false)
@@ -139,6 +148,15 @@ const cardStyles = computed(() => {
     cursor: canDrag.value ? 'grab' : 'pointer'
   }
 
+  // Canvas mode: use direct positioning without animations
+  if (props.canvasMode) {
+    return {
+      ...baseStyles,
+      transform: 'translateZ(0)',
+      opacity: '1'
+    }
+  }
+
   if (anim) {
     return {
       ...baseStyles,
@@ -161,10 +179,22 @@ const cardStyles = computed(() => {
 const handleCardClick = (e) => {
   if (isDragging.value) return
   e.stopPropagation()
-  store.openDetailView(props.project)
+  
+  // Canvas mode: emit click event for parent to handle
+  if (props.canvasMode) {
+    $emit('click', props.project)
+    return
+  }
+  
+  // If clickToNavigate is enabled, navigate to project view
+  if (props.clickToNavigate) {
+    router.push({ name: 'canvas-view', params: { projectId: props.project.id } })
+  } else {
+    store.openDetailView(props.project)
+  }
 }
 
-// Drag-and-drop for card repositioning
+// Drag-and-drop for card repositioning (gallery mode)
 let dragStartX = 0
 let dragStartY = 0
 
@@ -191,6 +221,15 @@ function handleDragStart(e) {
 
   document.addEventListener('mousemove', onDragMove)
   document.addEventListener('mouseup', onDragEnd)
+}
+
+// Canvas mode mouse down - emit dragstart for canvas dragging
+function onMouseDown(e) {
+  if (props.canvasMode) {
+    $emit('dragstart', e, props.project)
+  } else if (canDrag.value) {
+    handleDragStart(e)
+  }
 }
 
 async function saveField(field, value) {

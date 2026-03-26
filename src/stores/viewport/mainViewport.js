@@ -195,24 +195,6 @@ export function createMainViewportActions() {
       // Therefore: translate = viewportCenter - cardCenter * zoom
       this.translateX = viewportCenterX - (cardCenterX * this.zoom)
       this.translateY = viewportCenterY - (cardCenterY * this.zoom)
-      
-      console.log('🎯 centerOnFirstProject:', {
-        projectId: firstProject.id,
-        position,
-        cardSize,
-        cardCenter: { x: cardCenterX, y: cardCenterY },
-        viewport: { width: window.innerWidth, height: window.innerHeight, center: { x: viewportCenterX, y: viewportCenterY } },
-        zoom: this.zoom,
-        result: { translateX: this.translateX, translateY: this.translateY },
-        verification: {
-          screenX: cardCenterX * this.zoom + this.translateX,
-          screenY: cardCenterY * this.zoom + this.translateY,
-          expectedX: viewportCenterX,
-          expectedY: viewportCenterY,
-          errorX: Math.abs((cardCenterX * this.zoom + this.translateX) - viewportCenterX),
-          errorY: Math.abs((cardCenterY * this.zoom + this.translateY) - viewportCenterY)
-        }
-      })
     },
 
     centerOnSection(type) {
@@ -246,13 +228,6 @@ export function createMainViewportActions() {
       this.zoom = 0.8
       this.translateX = viewportCenterX - (cardCenterX * this.zoom)
       this.translateY = viewportCenterY - (cardCenterY * this.zoom)
-      
-      console.log('🎯 centerOnSection:', {
-        type,
-        projectId: firstOfKind.id,
-        position,
-        result: { translateX: this.translateX, translateY: this.translateY, zoom: this.zoom }
-      })
     }
   }
 }
