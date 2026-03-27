@@ -107,7 +107,9 @@ function onCanvasDrop(e) {
     const x = (e.clientX - viewport.translateX) / viewport.zoom
     const y = (e.clientY - viewport.translateY) / viewport.zoom
     emit('canvas-drop', { cell, x, y, sourceCardId, sourceCellIdx })
-  } catch {}
+  } catch (err) {
+    console.error('[CanvasBase] Drop error:', err)
+  }
 }
 
 function onWheel(e) {

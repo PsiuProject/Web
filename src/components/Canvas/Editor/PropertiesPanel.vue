@@ -1179,7 +1179,7 @@ function handlePropertiesContextMenuAction(action) {
       update('position_x', 0)
       update('position_y', 0)
       break
-    case 'reset-size':
+    case 'reset-size': {
       // Reset to default size based on element type
       const defaults = {
         card: { width: 280, height: 370 },
@@ -1192,6 +1192,7 @@ function handlePropertiesContextMenuAction(action) {
       update('width', def.width)
       update('height', def.height)
       break
+    }
     case 'reset-rotation':
       update('rotation', 0)
       break
@@ -1201,11 +1202,12 @@ function handlePropertiesContextMenuAction(action) {
       handlePropertiesContextMenuAction('reset-rotation')
       update('z_index', 0)
       break
-    case 'copy-style':
+    case 'copy-style': {
       // Copy element style to clipboard
       const styleData = JSON.stringify(element.value.style || {})
       navigator.clipboard.writeText(styleData).catch(console.error)
       break
+    }
     case 'paste-style':
       // Paste style from clipboard
       navigator.clipboard

@@ -18,7 +18,8 @@
       <div class="hero-content">
         <div class="hero-badge">FREE • OPEN SOURCE</div>
         <h1 class="hero-title">
-          VISUAL PROJECT<br />
+          VISUAL PROJECT
+          <br />
           <span class="highlight">MANAGER</span>
         </h1>
         <p class="hero-subtitle">
@@ -30,9 +31,7 @@
             START FOR FREE
             <span class="arrow">→</span>
           </button>
-          <button class="btn-secondary" @click="tryDemo">
-            TRY DEMO
-          </button>
+          <button class="btn-secondary" @click="tryDemo">TRY DEMO</button>
         </div>
         <div class="hero-trust">
           <span>MADE BY CREATIVE RESEARCHERS</span>
@@ -52,7 +51,10 @@
           <div class="feature-row">
             <div class="feature-content">
               <h3>VISUAL CANVAS</h3>
-              <p>Organize projects spatially with cards, text, images, and connections. See the big picture at a glance with unlimited workspace that grows with your ideas.</p>
+              <p>
+                Organize projects spatially with cards, text, images, and connections. See the big
+                picture at a glance with unlimited workspace that grows with your ideas.
+              </p>
               <ul class="feature-bullets">
                 <li>∞ Infinite canvas space</li>
                 <li>📋 Rich card content</li>
@@ -65,7 +67,10 @@
           <div class="feature-row reverse">
             <div class="feature-content">
               <h3>REAL-TIME COLLABORATION</h3>
-              <p>Work together simultaneously with your team. Comments, edits, and changes sync instantly across all devices, keeping everyone aligned.</p>
+              <p>
+                Work together simultaneously with your team. Comments, edits, and changes sync
+                instantly across all devices, keeping everyone aligned.
+              </p>
               <ul class="feature-bullets">
                 <li>⚡ Live sync across devices</li>
                 <li>💬 Inline comments</li>
@@ -78,7 +83,10 @@
           <div class="feature-row">
             <div class="feature-content">
               <h3>SMART CONNECTIONS</h3>
-              <p>Link related projects showing dependencies, inspirations, and relationships. Build knowledge networks that reveal how everything connects.</p>
+              <p>
+                Link related projects showing dependencies, inspirations, and relationships. Build
+                knowledge networks that reveal how everything connects.
+              </p>
               <ul class="feature-bullets">
                 <li>🔗 Dependency mapping</li>
                 <li>🎯 Custom connection types</li>
@@ -91,7 +99,10 @@
           <div class="feature-row reverse">
             <div class="feature-content">
               <h3>MULTI-LANGUAGE SUPPORT</h3>
-              <p>Auto PT/EN translations with custom glossary. Work globally and communicate locally without friction or manual translation overhead.</p>
+              <p>
+                Auto PT/EN translations with custom glossary. Work globally and communicate locally
+                without friction or manual translation overhead.
+              </p>
               <ul class="feature-bullets">
                 <li>🌐 Auto PT/EN translation</li>
                 <li>📚 Custom glossary</li>
@@ -104,7 +115,10 @@
           <div class="feature-row">
             <div class="feature-content">
               <h3>FLEXIBLE SHARING</h3>
-              <p>Private, public, or link-only access. Granular permissions control exactly who sees what, from private drafts to public portfolios.</p>
+              <p>
+                Private, public, or link-only access. Granular permissions control exactly who sees
+                what, from private drafts to public portfolios.
+              </p>
               <ul class="feature-bullets">
                 <li>🔒 Private projects</li>
                 <li>🔗 Shareable links</li>
@@ -117,7 +131,10 @@
           <div class="feature-row reverse">
             <div class="feature-content">
               <h3>OFFLINE MODE</h3>
-              <p>No internet? No problem. Keep working offline and your changes sync automatically when you're back online. Never lose progress.</p>
+              <p>
+                No internet? No problem. Keep working offline and your changes sync automatically
+                when you're back online. Never lose progress.
+              </p>
               <ul class="feature-bullets">
                 <li>💾 Local data storage</li>
                 <li>🔄 Auto-sync on reconnect</li>
@@ -134,33 +151,40 @@
     <section id="how-it-works" class="how-it-works-section">
       <div class="section-container">
         <h2 class="section-title center">HOW IT WORKS</h2>
-        
+
         <div class="steps-container">
           <div class="step-item">
             <div class="step-number">1</div>
             <div class="step-content">
               <h3>CREATE</h3>
-              <p>Add projects as rich cards with descriptions, images, metadata, and custom fields</p>
+              <p>
+                Add projects as rich cards with descriptions, images, metadata, and custom fields
+              </p>
             </div>
           </div>
-          
+
           <div class="step-connector"></div>
-          
+
           <div class="step-item">
             <div class="step-number">2</div>
             <div class="step-content">
               <h3>CONNECT</h3>
-              <p>Draw connections between items showing dependencies, relationships, and workflows</p>
+              <p>
+                Draw connections between items showing dependencies, relationships, and workflows
+              </p>
             </div>
           </div>
-          
+
           <div class="step-connector"></div>
-          
+
           <div class="step-item">
             <div class="step-number">3</div>
             <div class="step-content">
               <h3>COLLABORATE</h3>
-              <p>Share with your team, gather feedback through comments, iterate together in real-time</p>
+              <p>
+                Share with your team, gather feedback through comments, iterate together in
+                real-time
+              </p>
             </div>
           </div>
         </div>
@@ -172,8 +196,8 @@
       <div class="cta-content">
         <h2 class="cta-title">READY TO GET STARTED?</h2>
         <p class="cta-text">
-          Join thousands of teams organizing their work with PSIU.
-          Free forever for individuals. No credit card required.
+          Join thousands of teams organizing their work with PSIU. Free forever for individuals. No
+          credit card required.
         </p>
         <div class="cta-buttons">
           <button class="btn-primary large" @click="handleLogin">
@@ -244,7 +268,7 @@ function tryDemo() {
   --moss-light: #8a9f75;
   --terracotta: #c1442f;
   --orange: #ff5f1f;
-  
+
   font-family: 'Outfit', sans-serif;
   background: var(--ink);
   color: var(--paper);
@@ -344,7 +368,7 @@ html {
 .hero-bg {
   position: absolute;
   inset: 0;
-  background: 
+  background:
     radial-gradient(circle at 20% 30%, rgba(106, 125, 91, 0.12) 0%, transparent 40%),
     radial-gradient(circle at 80% 70%, rgba(193, 68, 47, 0.08) 0%, transparent 40%);
 }
@@ -558,7 +582,7 @@ html {
 }
 
 .canvas-visual {
-  background: 
+  background:
     linear-gradient(135deg, rgba(106, 125, 91, 0.1) 0%, transparent 50%),
     repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(106, 125, 91, 0.05) 40px),
     repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(106, 125, 91, 0.05) 40px);
@@ -577,30 +601,32 @@ html {
 }
 
 .collab-visual {
-  background: 
+  background:
     radial-gradient(circle at 30% 40%, rgba(193, 68, 47, 0.2) 0%, transparent 20%),
     radial-gradient(circle at 70% 60%, rgba(106, 125, 91, 0.2) 0%, transparent 20%);
 }
 
 .connections-visual {
-  background: 
+  background:
     linear-gradient(45deg, transparent 48%, rgba(106, 125, 91, 0.3) 50%, transparent 52%),
     linear-gradient(-45deg, transparent 48%, rgba(106, 125, 91, 0.3) 50%, transparent 52%);
 }
 
 .language-visual {
-  background: 
-    linear-gradient(90deg, rgba(106, 125, 91, 0.1) 0%, rgba(193, 68, 47, 0.1) 100%);
+  background: linear-gradient(90deg, rgba(106, 125, 91, 0.1) 0%, rgba(193, 68, 47, 0.1) 100%);
 }
 
 .sharing-visual {
-  background: 
-    radial-gradient(circle at center, rgba(106, 125, 91, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle at center, rgba(106, 125, 91, 0.15) 0%, transparent 70%);
 }
 
 .offline-visual {
-  background: 
-    linear-gradient(180deg, rgba(106, 125, 91, 0.1) 0%, transparent 50%, rgba(106, 125, 91, 0.1) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(106, 125, 91, 0.1) 0%,
+    transparent 50%,
+    rgba(106, 125, 91, 0.1) 100%
+  );
 }
 
 /* How It Works Section */
@@ -766,18 +792,18 @@ html {
     grid-template-columns: 1fr;
     gap: 2rem;
   }
-  
+
   .feature-row.reverse {
     direction: ltr;
   }
-  
+
   .step-connector {
     width: 2px;
     height: 40px;
     background: linear-gradient(180deg, var(--moss), transparent);
     margin: 1rem auto;
   }
-  
+
   .steps-container {
     flex-direction: column;
     align-items: center;
@@ -788,41 +814,41 @@ html {
   .nav-container {
     padding: 0.75rem 1.25rem;
   }
-  
+
   .nav-links {
     display: none;
   }
-  
+
   .hero-section {
     padding: 5rem 1.25rem 3rem;
   }
-  
+
   .hero-cta {
     flex-direction: column;
     width: 100%;
   }
-  
+
   .btn-primary,
   .btn-secondary {
     width: 100%;
     justify-content: center;
   }
-  
+
   .features-container {
     padding: 0 1.25rem;
   }
-  
+
   .section-title {
     font-size: 1.75rem;
   }
-  
+
   .footer-content {
     flex-direction: column;
     gap: 1rem;
     text-align: center;
     padding: 1rem 1.25rem;
   }
-  
+
   .footer-right {
     justify-content: center;
   }

@@ -100,7 +100,10 @@
             <small>{{ auth.userEmail }}</small>
           </div>
           <button
-            @click="auth.logout(); showUserMenu = false"
+            @click="
+              auth.logout()
+              showUserMenu = false
+            "
           >
             Logout
           </button>

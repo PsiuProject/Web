@@ -72,9 +72,9 @@ function save() {
   let updated
 
   if (typeof fieldVal === 'object' && fieldVal !== null) {
-    updated = { ...fieldVal, [locale.value]: editValue.value }
+    updated = { ...fieldVal, [i18nStore.currentLocale]: editValue.value }
   } else {
-    updated = { [locale.value]: editValue.value }
+    updated = { [i18nStore.currentLocale]: editValue.value }
   }
 
   emit('save', { field: props.field, value: updated })

@@ -73,8 +73,14 @@
             @input="onCellTextInput(idx, $event)"
             @mouseup="updateCellToolbarPosition(idx)"
             @keyup="updateCellFormatState()"
-            @click.stop="showCellToolbar = true; updateCellToolbarPosition(idx)"
-            @dblclick.stop="showCellToolbar = true; updateCellToolbarPosition(idx)"
+            @click.stop="
+              showCellToolbar = true
+              updateCellToolbarPosition(idx)
+            "
+            @dblclick.stop="
+              showCellToolbar = true
+              updateCellToolbarPosition(idx)
+            "
             v-html="getCellHTML(cell)"
           />
           <div
@@ -638,11 +644,11 @@ const cellToolbarStyle = computed(() => ({
 const cellFontSizeHandleStyle = (idx) => {
   const cell = cells.value[idx]
   if (!cell) return {}
-  
+
   // Position at bottom-right of cell text
   const fontSize = cell.fontSize || 14
   const scale = Math.max(0.8, Math.min(2, fontSize / 14)) // Scale based on font size
-  
+
   return {
     transform: `scale(${scale})`,
     transformOrigin: 'bottom right'
@@ -884,11 +890,12 @@ function handleCellContextMenuAction(action) {
   const cell = cells.value[idx]
 
   switch (action) {
-    case 'edit-text':
+    case 'edit-text': {
       // Focus the cell text element
       const cellEl = document.querySelector(`.card-cell:nth-child(${idx + 1}) .cell-text`)
       if (cellEl) cellEl.focus()
       break
+    }
     case 'format-bold':
       document.execCommand('bold', false, '')
       break
@@ -913,10 +920,11 @@ function handleCellContextMenuAction(action) {
     case 'replace-image':
       triggerCellImageUpload(idx)
       break
-    case 'remove-image':
+    case 'remove-image': {
       const newCells = cells.value.map((c, i) => (i === idx ? { ...c, url: '' } : c))
       saveCells(newCells)
       break
+    }
     case 'fit-cover':
       updateCell({ objectFit: 'cover' })
       break
@@ -928,7 +936,7 @@ function handleCellContextMenuAction(action) {
     case 'edit-url':
       // Focus the appropriate input
       break
-    case 'change-color':
+    case 'change-color': {
       // Open color picker for button cell
       const newColor = prompt('Enter color (hex):', cell.color || '#b55d3a')
       if (newColor) updateCell({ color: newColor })
@@ -1083,7 +1091,9 @@ function onCellDrop(e, targetIdx) {
           newCells.splice(targetIdx, 0, newCell)
           saveCells(newCells)
         }
-      } catch {}
+      } catch (err) {
+        console.error('[Card] Cell drop error:', err)
+      }
     }
   }
   dragOverCell.value = null
@@ -1240,14 +1250,18 @@ function updateCellFormatState() {
   }
   // Track if there's a text selection (for showing font size handle)
   const selection = window.getSelection()
-  cellFormatStateHasSelection.value = !!(selection && selection.rangeCount > 0 && !selection.isCollapsed)
+  cellFormatStateHasSelection.value = !!(
+    selection &&
+    selection.rangeCount > 0 &&
+    !selection.isCollapsed
+  )
 }
 
 function toggleCellFormat(command) {
   document.execCommand(command, false, '')
   updateCellFormatState()
 
-  // Save the formatted HTML content
+  // Save the formatted HTML content (sanitized for security)
   if (currentCellIdx.value !== null) {
     const cellElement = document.querySelector(
       `.card-cell:nth-child(${currentCellIdx.value + 1}) .cell-text`
@@ -1255,7 +1269,8 @@ function toggleCellFormat(command) {
     if (cellElement) {
       const newCells = [...cells.value]
       const currentText = newCells[currentCellIdx.value].text
-      const htmlContent = cellElement.innerHTML
+      const rawHtmlContent = cellElement.innerHTML
+      const htmlContent = sanitizeHTML(rawHtmlContent)
 
       const updated =
         typeof currentText === 'object' && currentText !== null
@@ -1283,33 +1298,31 @@ function increaseCellFontSize() {
 function onCellFontSizeResizeStart(e, idx) {
   e.preventDefault()
   e.stopPropagation()
-  
+
   const startY = e.clientY
   const startFontSize = cells.value[idx].fontSize || 14
-  
+
   const onMove = (me) => {
     const deltaY = startY - me.clientY // Drag up increases, down decreases
     const sensitivity = 0.1
     let newFontSize = Math.round((startFontSize + deltaY * sensitivity) * 10) / 10
     newFontSize = Math.max(8, Math.min(72, newFontSize))
-    
-    const newCells = cells.value.map((c, i) =>
-      i === idx ? { ...c, fontSize: newFontSize } : c
-    )
+
+    const newCells = cells.value.map((c, i) => (i === idx ? { ...c, fontSize: newFontSize } : c))
     saveCells(newCells)
   }
-  
+
   const onUp = () => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
-    cleanupFns = cleanupFns.filter(fn => fn !== cleanupWrapper)
+    cleanupFns = cleanupFns.filter((fn) => fn !== cleanupWrapper)
   }
-  
+
   const cleanupWrapper = () => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
   }
-  
+
   addCleanup(cleanupWrapper)
   document.addEventListener('mousemove', onMove)
   document.addEventListener('mouseup', onUp)
@@ -1528,16 +1541,19 @@ function decreaseCellFontSize() {
 .cell-text:focus {
   background: rgba(255, 255, 255, 0.03);
 }
-.cell-text b, .cell-text strong {
+.cell-text b,
+.cell-text strong {
   font-weight: bold;
 }
-.cell-text i, .cell-text em {
+.cell-text i,
+.cell-text em {
   font-style: italic;
 }
 .cell-text u {
   text-decoration: underline;
 }
-.cell-text s, .cell-text strike {
+.cell-text s,
+.cell-text strike {
   text-decoration: line-through;
 }
 
