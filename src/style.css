@@ -19,7 +19,7 @@
   --bg-texture: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; cursor: crosshair; user-select: none; -webkit-user-select: none; }
+* { margin: 0; padding: 0; box-sizing: border-box; cursor: crosshair; }
 
 body {
   background-color: var(--earth);
@@ -46,6 +46,113 @@ body::before {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+}
+
+/* Connection Ports */
+.connection-port-wrapper {
+  position: absolute;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+.connection-port {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--terracotta);
+  box-shadow: 0 0 4px var(--terracotta);
+  transition: all 0.2s ease;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.connection-port:hover {
+  transform: scale(1.4);
+  box-shadow: 0 0 8px var(--terracotta), 0 0 16px var(--terracotta);
+}
+
+.connection-port.highlighted {
+  animation: portPulse 1.5s ease-in-out infinite;
+}
+
+.connection-port.valid-target {
+  background-color: #4ade80 !important;
+  box-shadow: 0 0 8px #4ade80, 0 0 16px #4ade80 !important;
+  animation: validPulse 1s ease-in-out infinite;
+}
+
+.connection-port.invalid-target {
+  background-color: #f87171 !important;
+  box-shadow: 0 0 8px #f87171, 0 0 16px #f87171 !important;
+}
+
+/* Prevent selection rectangle during connection drag ONLY */
+.canvas-edit.dragging-connection .canvas-element,
+.canvas-edit.dragging-connection .canvas-card,
+.canvas-edit.dragging-connection .canvas-text,
+.canvas-edit.dragging-connection .canvas-image,
+.canvas-edit.dragging-connection .project-card,
+body.dragging-connection * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+/* Always prevent selection on interactive UI elements */
+.connection-port,
+.resize-handle,
+.cell-resize-handle,
+.text-end-handle,
+.font-size-resize-handle,
+.cell-actions,
+.add-cell-btn {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+@keyframes portPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes validPulse {
+  0%, 100% {
+    transform: scale(1.2);
+  }
+  50% {
+    transform: scale(1.4);
+  }
+}
+
+/* Glowing Connection Line Animation */
+@keyframes glowPulse {
+  0%, 100% {
+    opacity: 0.6;
+    filter: drop-shadow(0 0 4px currentColor);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 12px currentColor);
+  }
+}
+
+@keyframes dashDrag {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -16;
+  }
 }
 
 /* 4D Canvas Container */

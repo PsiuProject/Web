@@ -13,7 +13,8 @@ export const usePermissionsStore = defineStore('permissions', {
     canView: (state) => !!state.role || state.privacy === 'public' || state.privacy === 'link_only',
     canComment: (state) => ['owner', 'editor', 'commenter'].includes(state.role),
     canEdit: (state) => ['owner', 'editor'].includes(state.role),
-    canDelete: (state) => state.role === 'owner'
+    canDelete: (state) => state.role === 'owner',
+    isViewerOnly: (state) => !['owner', 'editor', 'commenter'].includes(state.role)
   },
 
   actions: {

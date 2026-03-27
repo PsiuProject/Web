@@ -72,7 +72,23 @@
     "evolution": "Evolução",
     "facilitator": "Facilitadora",
     "educational": "Atividade Educacional",
-    "tracking": "Conexão Tracker's"
+    "tracking": "Conexão Tracker's",
+    "partOf": "Parte De",
+    "originatesFrom": "Origina De",
+    "related": "Relacionado",
+    "partner": "Parceiro",
+    "supplier": "Fornecedor",
+    "service": "Serviço",
+    "selectType": "Selecionar Tipo de Conexão",
+    "customColor": "Cor Personalizada"
+  },
+  "common": {
+    "apply": "Aplicar",
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "save": "Salvar",
+    "delete": "Excluir",
+    "edit": "Editar"
   },
   "footer": {
     "coords": "EG_SA // X: {x} // Y: {y}",

@@ -3,6 +3,7 @@
     <AppHeader mode="comment" />
 
     <CanvasBase :interactive="true" @canvas-click="onCanvasClick">
+      <!-- Canvas elements -->
       <component
         v-for="element in elements.elements"
         :key="element.id"
@@ -10,40 +11,20 @@
         :element="element"
         :isSelected="elements.selectedId === element.id"
         @click="onElementClick(element)"
+        @mouseenter="hoveredElementId = element.id"
+        @mouseleave="hoveredElementId = null"
       />
 
-      <!-- Comment Markers -->
-      <CommentMarker
-        v-for="thread in visibleThreads"
-        :key="thread.id"
-        :comment="thread"
-        :isActive="activeThread?.id === thread.id"
-        @click="openThread(thread)"
+      <!-- Comment bubbles anchored to each element -->
+      <!-- Show on hover for commenter, or if has comments for anyone -->
+      <CommentBubble
+        v-for="element in elements.elements"
+        :key="'bubble-' + element.id"
+        v-show="shouldShowBubble(element.id)"
+        :element="element"
+        @click="onBubbleClick"
       />
-
-      <!-- Connection lines -->
-      <svg class="element-connections" xmlns="http://www.w3.org/2000/svg">
-        <ConnectionLine
-          v-for="conn in elements.connections"
-          :key="conn.id"
-          :x1="conn.x1"
-          :y1="conn.y1"
-          :x2="conn.x2"
-          :y2="conn.y2"
-          :connectionTypeKey="conn.type"
-          color="#b55d3a"
-        />
-      </svg>
     </CanvasBase>
-
-    <!-- New comment button (appears when element selected) -->
-    <button
-      v-if="elements.selectedId && !activeThread && permissions.canComment"
-      class="new-comment-btn"
-      @click="startNewComment"
-    >
-      + New Comment
-    </button>
 
     <!-- Comment Thread sidebar -->
     <CommentThread
@@ -52,25 +33,33 @@
       @close="activeThread = null"
     />
 
-    <!-- New comment input (modal) -->
-    <div v-if="showNewComment" class="new-comment-overlay" @click.self="showNewComment = false">
-      <div class="new-comment-form">
-        <h3>New Comment</h3>
-        <p class="comment-target">on {{ targetLabel }}</p>
-        <textarea
-          v-model="newCommentText"
-          placeholder="Write a comment..."
-          rows="3"
-          ref="commentInputRef"
-        />
-        <div class="comment-form-actions">
-          <button class="cancel-btn" @click="showNewComment = false">Cancel</button>
-          <button class="submit-btn" :disabled="!newCommentText.trim()" @click="submitComment">
-            Comment
-          </button>
+    <!-- New comment input (inline popover near element) -->
+    <Teleport to="body">
+      <div v-if="showNewComment" class="new-comment-overlay" @click.self="showNewComment = false">
+        <div class="new-comment-form" :style="newCommentFormStyle">
+          <div class="comment-form-header">
+            <h3>New Comment</h3>
+            <button class="close-form-btn" @click="showNewComment = false">&times;</button>
+          </div>
+          <p class="comment-target">on {{ targetLabel }}</p>
+          <textarea
+            v-model="newCommentText"
+            placeholder="Write a comment..."
+            rows="3"
+            ref="commentInputRef"
+            @keydown.ctrl.enter="submitComment"
+            @keydown.meta.enter="submitComment"
+          />
+          <div class="comment-form-actions">
+            <span class="hint">Ctrl+Enter to submit</span>
+            <div class="action-btns">
+              <button class="cancel-btn" @click="showNewComment = false">Cancel</button>
+              <button class="submit-btn" :disabled="!newCommentText.trim()" @click="submitComment">Comment</button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
@@ -83,8 +72,7 @@ import { useViewportStore } from '../stores/viewport'
 import { usePermissionsStore } from '../stores/permissions'
 import AppHeader from '../components/Layout/AppHeader.vue'
 import CanvasBase from '../components/Canvas/Render/CanvasBase.vue'
-import ConnectionLine from '../components/Canvas/Render/ConnectionLine.vue'
-import CommentMarker from '../components/Canvas/Comment/CommentMarker.vue'
+import CommentBubble from '../components/Canvas/Comment/CommentBubble.vue'
 import CommentThread from '../components/Canvas/Comment/CommentThread.vue'
 import Card from '../components/Canvas/Render/Card.vue'
 import Text from '../components/Canvas/Render/Text.vue'
@@ -101,20 +89,30 @@ const activeThread = ref(null)
 const showNewComment = ref(false)
 const newCommentText = ref('')
 const commentInputRef = ref(null)
+const hoveredElementId = ref(null)
+const pendingElementId = ref(null)
 
 const componentMap = { card: Card, text: Text, image: ImageEl, link: Link, button: Link }
+function getComponent(type) { return componentMap[type] || Text }
 
-function getComponent(type) {
-  return componentMap[type] || Text
+function hasComments(elementId) {
+  return (comments.activeThreadsByElement[elementId]?.length || 0) > 0
 }
 
-const visibleThreads = computed(() => {
-  return Object.values(comments.threadsByElement).flat()
-})
+// Show bubble if: hovered + commenter role, OR element has comments
+function shouldShowBubble(elementId) {
+  const isHovered = hoveredElementId.value === elementId
+  const elementHasComments = hasComments(elementId)
+  // Always show if has comments
+  if (elementHasComments) return true
+  // Show + bubble on hover only if user can comment
+  if (isHovered && permissions.canComment) return true
+  return false
+}
 
 const targetLabel = computed(() => {
-  if (!elements.selectedId) return 'Canvas'
-  const el = elements.selectedElement
+  if (!pendingElementId.value) return 'Canvas'
+  const el = elements.elements.find(e => e.id === pendingElementId.value)
   if (!el) return 'Element'
   if (el.type === 'card') {
     const title = el.content?.title
@@ -124,6 +122,22 @@ const targetLabel = computed(() => {
   return el.type.charAt(0).toUpperCase() + el.type.slice(1)
 })
 
+// Position the new comment form near the element
+const newCommentFormStyle = computed(() => {
+  if (!pendingElementId.value) return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
+  const el = elements.elements.find(e => e.id === pendingElementId.value)
+  if (!el) return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
+  // Convert canvas coords to screen coords
+  const screenX = el.position_x * viewport.zoom + viewport.translateX + el.width * viewport.zoom + 50
+  const screenY = el.position_y * viewport.zoom + viewport.translateY
+  return {
+    position: 'fixed',
+    left: `${Math.min(screenX, window.innerWidth - 420)}px`,
+    top: `${Math.max(70, Math.min(screenY, window.innerHeight - 300))}px`,
+    transform: 'none'
+  }
+})
+
 function onCanvasClick() {
   elements.clearSelection()
   activeThread.value = null
@@ -131,56 +145,39 @@ function onCanvasClick() {
 
 function onElementClick(element) {
   elements.selectElement(element.id)
-
-  // Show existing comments or nothing
   const threads = comments.threadsByElement[element.id]
-  if (threads && threads.length > 0) {
+  if (threads?.length > 0) {
     activeThread.value = threads[0]
   } else {
     activeThread.value = null
   }
 }
 
-function openThread(thread) {
-  activeThread.value = thread
-}
-
-function startNewComment() {
-  showNewComment.value = true
-  newCommentText.value = ''
-  nextTick(() => commentInputRef.value?.focus())
+function onBubbleClick(element, threads) {
+  if (threads?.length > 0) {
+    // Open existing thread
+    activeThread.value = threads[0]
+  } else if (permissions.canComment) {
+    // Start new comment
+    pendingElementId.value = element.id
+    showNewComment.value = true
+    newCommentText.value = ''
+    nextTick(() => commentInputRef.value?.focus())
+  }
 }
 
 async function submitComment() {
   if (!newCommentText.value.trim()) return
-
   const projectId = route.params.projectId
-  const elementId = elements.selectedId
-  const el = elements.selectedElement
-
-  // Position the comment near the element
-  const posX = el ? el.position_x + el.width + 10 : 0
-  const posY = el ? el.position_y : 0
+  const elementId = pendingElementId.value
 
   const comment = await comments.addComment(projectId, newCommentText.value.trim(), elementId)
 
   if (comment) {
-    // Update position
-    const { supabase, isSupabaseConfigured } = await import('../lib/supabase')
-    if (isSupabaseConfigured) {
-      await supabase.from('canvas_comments').update({ position_x: posX, position_y: posY }).eq('id', comment.id)
-      comment.position_x = posX
-      comment.position_y = posY
-    }
-
     showNewComment.value = false
     newCommentText.value = ''
-
-    // Open the thread for the new comment
     const threads = comments.threadsByElement[elementId]
-    if (threads?.length > 0) {
-      activeThread.value = threads[threads.length - 1]
-    }
+    if (threads?.length > 0) activeThread.value = threads[threads.length - 1]
   }
 }
 
@@ -189,7 +186,6 @@ onMounted(async () => {
   await permissions.loadPermissions(projectId)
   await elements.loadElements(projectId)
   await comments.loadComments(projectId)
-
   elements.subscribeToRealtime(projectId)
   comments.subscribeToRealtime(projectId)
 
@@ -213,60 +209,31 @@ onUnmounted(() => {
   height: 100vh;
 }
 
-.element-connections {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  overflow: visible;
-}
-
-.new-comment-btn {
-  position: fixed;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--terracotta);
-  border: none;
-  color: var(--paper);
-  padding: 0.75rem 2rem;
-  font-family: 'Space Mono', monospace;
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  cursor: pointer;
-  z-index: 800;
-  box-shadow: 0 4px 16px rgba(181, 93, 58, 0.4);
-  transition: all 0.2s;
-}
-
-.new-comment-btn:hover {
-  background: var(--stencil-orange);
-  transform: translateX(-50%) translateY(-2px);
-}
-
 .new-comment-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
   z-index: 960;
+  pointer-events: all;
+  backdrop-filter: blur(2px);
 }
 
 .new-comment-form {
   background: rgba(20, 20, 18, 0.98);
   border: 1px solid var(--moss);
-  padding: 1.5rem;
-  width: 400px;
+  padding: 1.25rem;
+  width: 380px;
   max-width: 90vw;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+}
+
+.comment-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
 }
 
 .new-comment-form h3 {
@@ -275,8 +242,19 @@ onUnmounted(() => {
   color: var(--paper);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin: 0 0 0.25rem 0;
+  margin: 0;
 }
+
+.close-form-btn {
+  background: transparent;
+  border: none;
+  color: var(--moss-light);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+.close-form-btn:hover { color: var(--paper); }
 
 .comment-target {
   font-family: 'Space Mono', monospace;
@@ -295,18 +273,27 @@ onUnmounted(() => {
   font-size: 0.9rem;
   line-height: 1.5;
   resize: vertical;
+  box-sizing: border-box;
+  border-radius: 2px;
 }
-
-.new-comment-form textarea:focus {
-  outline: none;
-  border-color: var(--terracotta);
-}
+.new-comment-form textarea:focus { outline: none; border-color: var(--terracotta); }
 
 .comment-form-actions {
   display: flex;
-  gap: 0.5rem;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 0.75rem;
-  justify-content: flex-end;
+}
+
+.hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--moss-light);
+}
+
+.action-btns {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .cancel-btn {
@@ -318,7 +305,10 @@ onUnmounted(() => {
   font-size: 0.75rem;
   cursor: pointer;
   text-transform: uppercase;
+  border-radius: 2px;
+  transition: all 0.15s;
 }
+.cancel-btn:hover { background: rgba(106, 125, 91, 0.1); }
 
 .submit-btn {
   background: var(--terracotta);
@@ -330,14 +320,9 @@ onUnmounted(() => {
   font-weight: bold;
   cursor: pointer;
   text-transform: uppercase;
+  border-radius: 2px;
+  transition: all 0.15s;
 }
-
-.submit-btn:hover:not(:disabled) {
-  background: var(--stencil-orange);
-}
-
-.submit-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+.submit-btn:hover:not(:disabled) { background: var(--stencil-orange); }
+.submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>

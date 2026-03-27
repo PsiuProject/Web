@@ -1,1 +1,0 @@
-import{n as e,t}from"./supabase-DUdHlTVU.js";export{t as isSupabaseConfigured,e as supabase};

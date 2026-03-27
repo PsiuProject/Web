@@ -25,9 +25,9 @@
 
 <script setup>
 import { ref, computed, nextTick, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { useI18nStore } from '../../../stores/i18n-store'
 
-const { locale } = useI18n()
+const i18nStore = useI18nStore()
 
 const props = defineProps({
   element: { type: Object, default: null },
@@ -45,7 +45,7 @@ function getTextValue(content, field) {
   if (!content) return ''
   const val = content[field]
   if (!val) return ''
-  if (typeof val === 'object') return val[locale.value] ?? val.pt ?? val.en ?? ''
+  if (typeof val === 'object') return val[i18nStore.currentLocale] ?? val.pt ?? val.en ?? ''
   return val
 }
 

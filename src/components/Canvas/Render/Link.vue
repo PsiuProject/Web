@@ -10,27 +10,53 @@
     @dblclick.prevent="$emit('dblclick', element)"
   >
     {{ displayText(element.content?.label) || element.content?.url }}
+    
+    <!-- Connection ports (visible in connection mode) - TOP and BOTTOM only for buttons/links -->
+    <template v-if="showPorts">
+      <ConnectionPort
+        v-for="side in ['top', 'bottom']"
+        :key="`port-${side}`"
+        :side="side"
+        :element="element"
+        :color="portColor"
+        :is-highlighted="highlightedPort?.elementId === element.id && highlightedPort?.side === side"
+        @mousedown.stop
+        @click="$emit('port-click', { element, side })"
+        @drag-start="$emit('port-drag-start', { element, side, color: portColor })"
+        @hover="$emit('port-hover', { element, side })"
+        @leave="$emit('port-leave', { element, side })"
+      />
+    </template>
   </a>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-
-const { locale } = useI18n()
+import { useI18nStore } from '../../../stores/i18n-store'
+import ConnectionPort from './ConnectionPort.vue'
 
 const props = defineProps({
   element: { type: Object, required: true },
-  isSelected: { type: Boolean, default: false }
+  isSelected: { type: Boolean, default: false },
+  isEditMode: { type: Boolean, default: false },
+  showPorts: { type: Boolean, default: false },
+  highlightedPort: { type: Object, default: null }
 })
 
-defineEmits(['click', 'dblclick'])
+defineEmits(['click', 'dblclick', 'port-click', 'port-drag-start', 'port-hover', 'port-leave'])
+
+const i18nStore = useI18nStore()
 
 function displayText(value) {
   if (!value) return ''
-  if (typeof value === 'object') return value[locale.value] ?? value['pt'] ?? ''
+  if (typeof value === 'object') return value[i18nStore.currentLocale] ?? value['pt'] ?? ''
   return value
 }
+
+// Port color based on connection type or default
+const portColor = computed(() => {
+  return props.element.color || '#b55d3a'
+})
 
 const linkStyle = computed(() => ({
   left: `${props.element.position_x}px`,

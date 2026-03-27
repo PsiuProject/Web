@@ -5,11 +5,17 @@
 
       <!-- Gallery mode: NO section filters (clean view) -->
       
-      <!-- Project mode: view/edit/comment/present tabs -->
+      <!-- Project mode: view/edit/comment/present tabs — filtered by role -->
+      <!-- 
+        Viewer role: View | Present only
+        Comment role: View | Comment | Present (no Edit)
+        Editor/Owner role: View | Comment | Edit | Present
+      -->
       <nav v-if="projectId" class="mode-nav">
         <router-link :to="`/${projectId}/view`" :class="{ active: mode === 'view' }">View</router-link>
         <router-link v-if="permissions.canComment" :to="`/${projectId}/comment`" :class="{ active: mode === 'comment' }">Comment</router-link>
         <router-link v-if="permissions.canEdit" :to="`/${projectId}/edit`" :class="{ active: mode === 'edit' }">Edit</router-link>
+        <!-- Presentation is always visible for all roles -->
         <router-link :to="`/${projectId}/present`" :class="{ active: mode === 'present' }">Present</router-link>
       </nav>
     </div>
@@ -19,6 +25,26 @@
     </div>
 
     <div class="header-right">
+      <!-- Gallery button (all roles when in project mode) -->
+      <router-link v-if="projectId" to="/gallery" class="gallery-btn">Gallery</router-link>
+
+      <!-- Fork button (all roles when in project mode - requires login) -->
+      <button v-if="projectId && auth.isLoggedIn" class="fork-btn" @click="forkProject" :disabled="forking" :title="'Fork project to your account'">
+        {{ forking ? '...' : '⑂ Fork' }}
+      </button>
+
+      <!-- Export button (all roles when in project mode) -->
+      <button v-if="projectId" class="export-btn" @click="showExportMenu = !showExportMenu" title="Export / Download">
+        ↓ Export
+      </button>
+
+      <!-- Export dropdown menu -->
+      <div v-if="showExportMenu && projectId" class="export-menu" @click.stop>
+        <button @click="exportAsJSON">Export as JSON</button>
+        <button @click="exportAsPNG">Export as PNG</button>
+        <button @click="exportAsPDF">Export as PDF</button>
+      </div>
+
       <!-- Notification bell -->
       <button v-if="auth.isLoggedIn && comments.unreadCount > 0" class="notif-btn" @click="showNotifications = !showNotifications">
         {{ comments.unreadCount }}
@@ -137,6 +163,7 @@ import { useCommentsStore } from '../../stores/comments'
 import { useI18nStore } from '../../stores/i18n-store'
 import { useProjectsStore } from '../../stores/projectsStore'
 import { useGalleryStore } from '../../stores/gallery'
+import { supabase, isSupabaseConfigured } from '../../lib/supabase'
 import AuthModal from '../AuthModal.vue'
 
 const props = defineProps({
@@ -156,7 +183,9 @@ const showAuth = ref(false)
 const showUserMenu = ref(false)
 const showNotifications = ref(false)
 const showNewProjectModal = ref(false)
+const showExportMenu = ref(false)
 const creating = ref(false)
+const forking = ref(false)
 const newProject = ref({ title_pt: '', title_en: '', description_pt: '', status: 'active', privacy: 'private' })
 const isDev = import.meta.env.DEV
 
@@ -176,6 +205,77 @@ function goToComment(notif) {
     router.push({ name: 'canvas-comment', params: { projectId: notif.comment.project_id } })
     comments.markAsRead(notif.id)
     showNotifications.value = false
+  }
+}
+
+async function forkProject() {
+  if (!auth.isLoggedIn || !projectId.value) return
+  forking.value = true
+  try {
+    const src = projects.projects.find(p => p.id === projectId.value)
+    if (!src || !isSupabaseConfigured) return
+    const { data: newP, error } = await supabase.from('projects').insert({
+      title: src.title,
+      description: src.description,
+      status: src.status,
+      privacy: 'private',
+      size: src.size || 'card-md',
+      territory: src.territory,
+      axis: src.axis || [],
+      year: src.year || new Date().getFullYear(),
+      position_x: Math.random() * 400,
+      position_y: Math.random() * 300,
+      owner_id: auth.userId
+    }).select().single()
+    if (error) throw error
+    const { data: elems } = await supabase.from('canvas_elements').select('*').eq('project_id', projectId.value)
+    if (elems?.length) {
+      const newElems = elems.map(({ id, created_at, updated_at, ...rest }) => ({
+        ...rest, project_id: newP.id, created_by: auth.userId
+      }))
+      await supabase.from('canvas_elements').insert(newElems)
+    }
+    router.push({ name: 'canvas-edit', params: { projectId: newP.id } })
+  } catch (err) {
+    console.error('[Fork] Failed:', err.message)
+  } finally {
+    forking.value = false
+  }
+}
+
+function exportProject() {
+  if (!projectId.value) return
+  const src = projects.projects.find(p => p.id === projectId.value)
+  if (!src) return
+  const blob = new Blob([JSON.stringify(src, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `project-${projectId.value}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function exportAsJSON() {
+  showExportMenu.value = false
+  exportProject()
+}
+
+async function exportAsPNG() {
+  showExportMenu.value = false
+  // PNG export would require html2canvas library
+  // For now, use browser's screenshot functionality
+  alert('For PNG export, use your browser\'s screenshot functionality (Cmd+Shift+4 on Mac, Win+Shift+S on Windows), or install html2canvas package.')
+}
+
+async function exportAsPDF() {
+  showExportMenu.value = false
+  // Basic PDF export using print
+  try {
+    window.print()
+  } catch (err) {
+    console.error('[Export PDF] Failed:', err)
+    alert('PDF export failed. Use browser print (Ctrl+P) to save as PDF.')
   }
 }
 
@@ -333,6 +433,36 @@ async function createProject() {
   color: var(--paper);
   font-weight: 600;
 }
+
+.gallery-btn {
+  padding: 0.35rem 0.75rem;
+  background: rgba(106, 125, 91, 0.15);
+  border: 1px solid var(--moss);
+  color: var(--paper);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.gallery-btn:hover { background: rgba(106, 125, 91, 0.3); }
+
+.fork-btn, .export-btn {
+  padding: 0.35rem 0.65rem;
+  background: transparent;
+  border: 1px solid var(--moss);
+  color: var(--paper);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.fork-btn:hover:not(:disabled) { background: rgba(106, 125, 91, 0.15); border-color: var(--terracotta); color: var(--terracotta); }
+.fork-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.export-btn:hover { background: rgba(106, 125, 91, 0.15); }
 
 .notif-btn, .lang-toggle, .user-btn, .login-btn {
   padding: 0.35rem 0.65rem;
@@ -619,5 +749,38 @@ async function createProject() {
 
 .new-project-mini:hover {
   background: rgba(255, 95, 31, 0.25) !important;
+}
+
+/* Export dropdown menu */
+.export-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: rgba(20, 20, 18, 0.98);
+  border: 1px solid var(--moss);
+  padding: 0.5rem;
+  min-width: 160px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.export-menu button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--paper);
+  padding: 0.4rem 0.75rem;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.export-menu button:hover {
+  background: rgba(106, 125, 91, 0.15);
+  border-color: var(--moss);
 }
 </style>

@@ -1,10 +1,11 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import i18n from './i18n'
+import i18n, { syncI18nWithStore } from './i18n'
 import router from './router'
 import './style.css'
 import App from './App.vue'
 import { useAuthStore, TEST_PROJECT } from './stores/auth'
+import { useI18nStore } from './stores/i18n-store'
 import { mockStore } from './lib/mockData'
 
 const app = createApp(App)
@@ -13,6 +14,10 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 app.use(i18n)
+
+// Sync vue-i18n with i18n store after both are initialized
+const i18nStore = useI18nStore()
+syncI18nWithStore(i18nStore)
 
 const auth = useAuthStore()
 

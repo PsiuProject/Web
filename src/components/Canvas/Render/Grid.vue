@@ -1,6 +1,14 @@
 <template>
-  <div class="canvas-grid"></div>
+  <div class="canvas-grid" :style="{ opacity: showGrid ? 1 : 0 }"></div>
 </template>
+
+<script setup>
+import { computed } from 'vue'
+import { useViewportStore } from '../../../stores/viewport'
+
+const viewport = useViewportStore()
+const showGrid = computed(() => viewport.showGrid)
+</script>
 
 <style scoped>
 .canvas-grid {

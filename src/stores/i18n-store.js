@@ -6,6 +6,7 @@ export const useI18nStore = defineStore('i18n', {
   }),
 
   getters: {
+    currentLocale: (state) => state.locale,
     isEnglish: (state) => state.locale === 'en',
     isPortuguese: (state) => state.locale === 'pt'
   },

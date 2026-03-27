@@ -3,115 +3,76 @@
     class="connection-group"
     @mouseenter="isHovered = true"
     @mouseleave="isHovered = false"
+    @mousemove="updateMousePosition"
+    @contextmenu.prevent.stop="onRightClick"
   >
-    <!-- Invisible wider line for easier hover detection -->
+    <!-- Invisible wider line for easier hover/click detection -->
     <path
       :d="pathData"
       stroke="transparent"
-      stroke-width="24"
+      stroke-width="60"
       fill="none"
       style="cursor: pointer;"
+      @click.stop="onClick"
+      @contextmenu.stop
     />
     
-    <!-- Background glow line (always visible, low opacity) -->
+    <!-- Main flat modern dotted line - always animated -->
     <path
       :d="pathData"
       :stroke="lineColor"
-      stroke-width="6"
+      stroke-width="4"
       fill="none"
-      :opacity="0.08"
-      class="connection-glow"
+      stroke-linecap="round"
+      :stroke-dasharray="dotPattern"
+      class="connection-line-dotted connection-line-animated"
     />
     
-    <!-- Animated dotted line - lower opacity by default -->
-    <path
-      :d="pathData"
-      :stroke="lineColor"
-      stroke-width="1.5"
-      stroke-dasharray="6 10"
-      fill="none"
-      :opacity="isHovered ? 0.7 : 0.25"
-      class="connection-line"
-      :class="{ 'connection-line-animated': !isHovered }"
-    />
-    
-    <!-- Secondary slower animation layer -->
-    <path
-      :d="pathData"
-      :stroke="lineColor"
-      stroke-width="1"
-      stroke-dasharray="3 17"
-      fill="none"
-      :opacity="isHovered ? 0.5 : 0.15"
-      class="connection-line-slow"
-      :class="{ 'connection-line-animated-slow': !isHovered }"
-    />
-    
-    <!-- Connection dots at endpoints -->
+    <!-- Connection dots at endpoints (subtle) -->
     <circle
       :cx="x1"
       :cy="y1"
-      r="4"
+      r="5"
       :fill="lineColor"
-      :opacity="isHovered ? 0.9 : 0.35"
       class="connection-dot"
     />
     <circle
       :cx="x2"
       :cy="y2"
-      r="4"
+      r="5"
       :fill="lineColor"
-      :opacity="isHovered ? 0.9 : 0.35"
       class="connection-dot"
     />
     
-    <!-- Animated dot traveling along path -->
-    <circle
-      v-if="isHovered"
-      r="3"
-      :fill="lineColor"
-      :opacity="0.8"
-      class="connection-traveler"
-    >
-      <animateMotion 
-        :path="pathData" 
-        dur="3s" 
-        repeatCount="indefinite"
-        fill="freeze"
-      />
-    </circle>
-    
-    <!-- Tooltip on hover -->
-    <g v-if="isHovered && connectionTypeKey" class="connection-tooltip">
+    <!-- Tooltip at mouse position -->
+    <g v-if="isHovered && connectionTypeKey" class="connection-tooltip" :transform="tooltipTransform">
       <rect
-        :x="tooltipX"
-        :y="tooltipY - 12"
+        x="-80"
+        y="-18"
         :width="tooltipWidth"
-        height="24"
-        fill="#0d0d0d"
+        height="36"
+        fill="rgba(13, 13, 13, 0.95)"
         :stroke="lineColor"
         stroke-width="1"
-        rx="4"
-        :opacity="0.9"
+        rx="8"
+        filter="drop-shadow(0 4px 12px rgba(0,0,0,0.5))"
       />
       <text
-        :x="tooltipX + tooltipWidth / 2"
-        :y="tooltipY + 4"
         text-anchor="middle"
-        dominant-baseline="middle"
+        dominant-baseline="central"
         fill="#e2ded0"
-        font-size="11"
+        font-size="14"
         font-family="'Space Mono', monospace"
-        style="pointer-events: none; letter-spacing: 0.05vw;"
+        style="pointer-events: none; letter-spacing: 0.04em; font-weight: 700;"
       >
-        {{ t(connectionTypeKey) }}
+        {{ connectionLabel }}
       </text>
     </g>
   </g>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -122,129 +83,172 @@ const props = defineProps({
   x2: { type: Number, required: true },
   y2: { type: Number, required: true },
   connectionTypeKey: { type: String, default: 'connections.subProject' },
-  color: { type: String, default: '#b55d3a' }
+  color: { type: String, default: '#b55d3a' },
+  isDragging: { type: Boolean, default: false },
+  animationStyle: { type: String, default: 'flat' },
+  connectionId: { type: String, default: null }
+})
+
+const emit = defineEmits(['right-click', 'click'])
+
+// Always animate - increased speed for subtle effect
+const animationDuration = computed(() => {
+  const length = Math.sqrt(Math.pow(props.x2 - props.x1, 2) + Math.pow(props.y2 - props.y1, 2))
+  return Math.max(1, length / 100).toFixed(2) + 's'
 })
 
 const isHovered = ref(false)
+const mouseX = ref(0)
+const mouseY = ref(0)
 
-// Improved path calculation with smooth curves
+// Dynamic dot pattern based on line length
+const dotPattern = computed(() => {
+  return '8 8' // 8px dots, 8px gaps
+})
+
+// Store mouse position on hover for tooltip
+function updateMousePosition(e) {
+  const svg = e.currentTarget.closest('svg')
+  if (svg) {
+    const pt = svg.createSVGPoint()
+    pt.x = e.clientX
+    pt.y = e.clientY
+    const svgP = pt.matrixTransform(svg.getScreenCTM().inverse())
+    mouseX.value = svgP.x
+    mouseY.value = svgP.y
+  }
+}
+
+// Add mouse move listener to track position
+onMounted(() => {
+  // Tooltip follows mouse dynamically
+})
+
+// Smooth curve path calculation
 const pathData = computed(() => {
   const dx = props.x2 - props.x1
   const dy = props.y2 - props.y1
   const distance = Math.sqrt(dx * dx + dy * dy)
   
-  // Control point offset based on distance (smoother for longer paths)
-  const offsetFactor = Math.min(0.5, 300 / Math.max(distance, 100))
-  const controlOffset = Math.abs(dy) * offsetFactor + Math.abs(dx) * 0.15
+  // Simpler, flatter curve
+  const controlOffset = Math.min(50, distance * 0.2)
   
-  // Cubic bezier for smoother S-curve
-  const midX = (props.x1 + props.x2) / 2
-  const midY = (props.y1 + props.y2) / 2
-  
-  // Additional control points for more natural curves
-  const cx1 = props.x1 + (dx * 0.25)
-  const cy1 = props.y1 + controlOffset
-  const cx2 = props.x1 + (dx * 0.75)
-  const cy2 = props.y2 - controlOffset
+  // Cubic bezier for smooth S-curve
+  const cx1 = props.x1 + (dx * 0.5)
+  const cy1 = props.y1
+  const cx2 = props.x1 + (dx * 0.5)
+  const cy2 = props.y2
   
   return `M ${props.x1} ${props.y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${props.x2} ${props.y2}`
 })
 
-// Midpoint for tooltip
-const midX = computed(() => (props.x1 + props.x2) / 2)
-const midY = computed(() => (props.y1 + props.y2) / 2)
-
-// Tooltip position - offset to not cover the line
-const tooltipX = computed(() => {
-  const dx = props.x2 - props.x1
-  return dx > 0 ? midX.value - 40 : midX.value + 40
+// Tooltip follows mouse position dynamically
+const tooltipTransform = computed(() => {
+  if (mouseX.value && mouseY.value) {
+    // Position tooltip centered above the mouse cursor
+    return `translate(${mouseX.value}, ${mouseY.value - 50})`
+  }
+  // Fallback to midpoint if no mouse position
+  const midX = (props.x1 + props.x2) / 2
+  const midY = (props.y1 + props.y2) / 2
+  return `translate(${midX}, ${midY - 50})`
 })
-const tooltipY = computed(() => midX.value)
 
-// Dynamic tooltip width based on text length
 const tooltipWidth = computed(() => {
-  const type = props.connectionTypeKey || ''
-  return Math.max(100, type.length * 8 + 24)
+  const label = connectionLabel.value || ''
+  // Dynamic width based on text length, minimum 160px for better visibility
+  return Math.max(180, label.length * 11 + 60)
 })
 
 const lineColor = computed(() => props.color)
+
+// Get connection label from translation key
+const connectionLabel = computed(() => {
+  if (!props.connectionTypeKey) return ''
+  // Extract just the type from 'connections.subProject' format
+  const parts = props.connectionTypeKey.split('.')
+  const type = parts[parts.length - 1]
+  // Return the translated label or the type itself
+  try {
+    return t(`connections.${type}`) || type
+  } catch (e) {
+    return type
+  }
+})
+
+function onRightClick(e) {
+  console.log('[ConnectionLine] RIGHT-CLICK emitted:', props.connectionId)
+  e.preventDefault()
+  e.stopPropagation()
+  emit('right-click', {
+    connectionId: props.connectionId,
+    x: e.clientX,
+    y: e.clientY
+  })
+}
+
+function onClick(e) {
+  console.log('[ConnectionLine] LEFT-CLICK emitted:', props.connectionId)
+  e.stopPropagation()
+  emit('click', {
+    connectionId: props.connectionId
+  })
+}
 </script>
 
 <style scoped>
 .connection-group {
   pointer-events: auto;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
 }
 
-.connection-line {
-  transition: opacity 0.3s ease, stroke-width 0.2s ease;
+.connection-line-dotted {
+  transition: stroke-width 0.2s ease, opacity 0.2s ease;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
 }
 
 .connection-line-animated {
-  animation: dashMove 15s linear infinite;
-}
-
-.connection-line-slow {
-  transition: opacity 0.3s ease;
-}
-
-.connection-line-animated-slow {
-  animation: dashMoveSlow 25s linear infinite;
-}
-
-.connection-glow {
-  transition: opacity 0.3s ease;
+  animation: dottedFlow v-bind(animationDuration) linear infinite;
+  stroke-width: 5;
+  opacity: 1;
 }
 
 .connection-dot {
-  transition: opacity 0.3s ease, r 0.2s ease;
-}
-
-.connection-traveler {
-  filter: drop-shadow(0 0 0.21vw currentColor);
-}
-
-.connection-group:hover .connection-line {
-  stroke-width: 2;
-}
-
-.connection-group:hover .connection-glow {
-  opacity: 0.15;
+  transition: r 0.2s ease;
+  opacity: 0.8;
 }
 
 .connection-group:hover .connection-dot {
-  r: 5;
+  r: 7;
+  opacity: 1;
+}
+
+/* Dotted flow animation */
+@keyframes dottedFlow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -32;
+  }
 }
 
 .connection-tooltip {
-  animation: fadeIn 0.2s ease;
+  pointer-events: none;
+  animation: tooltipFadeIn 0.15s ease-out;
 }
 
-@keyframes fadeIn {
+@keyframes tooltipFadeIn {
   from {
     opacity: 0;
-    transform: translateY(-0.16vh);
+    transform: translateY(5px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes dashMove {
-  from {
-    stroke-dashoffset: 0;
-  }
-  to {
-    stroke-dashoffset: 160;
-  }
-}
-
-@keyframes dashMoveSlow {
-  from {
-    stroke-dashoffset: 0;
-  }
-  to {
-    stroke-dashoffset: -200;
+    transform: translateY(-45px);
   }
 }
 </style>

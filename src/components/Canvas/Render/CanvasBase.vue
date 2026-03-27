@@ -11,6 +11,8 @@
     @touchstart="onTouchStart"
     @touchmove="onTouchMove"
     @touchend="onTouchEnd"
+    @dragover.prevent
+    @drop.prevent="onCanvasDrop"
   >
     <div 
       class="canvas-container"
@@ -27,7 +29,7 @@
           :y1="conn.y1"
           :x2="conn.x2"
           :y2="conn.y2"
-          :type="conn.type"
+          :connectionTypeKey="conn.type"
         />
       </svg>
 
@@ -47,7 +49,7 @@ const props = defineProps({
   interactive: { type: Boolean, default: true }
 })
 
-const emit = defineEmits(['canvas-click'])
+const emit = defineEmits(['canvas-click', 'canvas-drop'])
 
 const viewport = useViewportStore()
 const elements = useElementsStore()
@@ -55,7 +57,11 @@ const viewportRef = ref(null)
 
 function onMouseDown(e) {
   if (!props.interactive) return
-  if (e.target.closest('.canvas-element')) return
+  if (e.target.closest('.canvas-element') || e.target.closest('.comment-bubble') || e.target.closest('.resize-handle') || e.target.closest('.connection-port')) return
+  
+  // Don't start viewport drag if in connection dragging mode
+  const canvasEdit = document.querySelector('.canvas-edit')
+  if (canvasEdit && canvasEdit.classList.contains('dragging-connection')) return
   
   emit('canvas-click')
   viewport.updateMouse(e.clientX, e.clientY)
@@ -65,6 +71,10 @@ function onMouseDown(e) {
 
 function onMouseMove(e) {
   if (!props.interactive) return
+  // Don't pan viewport if in connection dragging mode
+  const canvasEdit = document.querySelector('.canvas-edit')
+  if (canvasEdit && canvasEdit.classList.contains('dragging-connection')) return
+  
   viewport.updateMouse(e.clientX, e.clientY)
   if (viewport.isDragging) {
     viewport.updateTranslate(e.clientX, e.clientY)
@@ -81,6 +91,19 @@ function onMouseLeave() {
   viewport.setDragging(false)
 }
 
+function onCanvasDrop(e) {
+  const cellData = e.dataTransfer.getData('cell-data')
+  if (!cellData) return
+  try {
+    const cell = JSON.parse(cellData)
+    const sourceCardId = e.dataTransfer.getData('source-card-id')
+    const sourceCellIdx = parseInt(e.dataTransfer.getData('cell-idx'))
+    const x = (e.clientX - viewport.translateX) / viewport.zoom
+    const y = (e.clientY - viewport.translateY) / viewport.zoom
+    emit('canvas-drop', { cell, x, y, sourceCardId, sourceCellIdx })
+  } catch {}
+}
+
 function onWheel(e) {
   if (!props.interactive) return
   e.preventDefault()
@@ -89,17 +112,23 @@ function onWheel(e) {
 
 function onTouchStart(e) {
   if (!props.interactive) return
+  // Prevent default only for multi-touch (pinch)
+  if (e.touches.length === 2) {
+    e.preventDefault()
+  }
   viewport.onTouchStart(e)
 }
 
 function onTouchMove(e) {
   if (!props.interactive) return
+  // Always prevent default on touch move to avoid browser scrolling/zooming
+  e.preventDefault()
   viewport.onTouchMove(e)
 }
 
-function onTouchEnd() {
+function onTouchEnd(e) {
   if (!props.interactive) return
-  viewport.onTouchEnd()
+  viewport.onTouchEnd(e)
 }
 </script>
 
@@ -113,6 +142,7 @@ function onTouchEnd() {
   overflow: hidden;
   background: var(--charcoal);
   cursor: grab;
+  touch-action: none; /* Prevent browser handling of touch gestures */
 }
 
 .canvas-viewport.dragging {
@@ -139,5 +169,6 @@ function onTouchEnd() {
   height: 100%;
   pointer-events: none;
   z-index: 0;
+  overflow: visible;
 }
 </style>

@@ -1,5 +1,9 @@
 {
   "mcpServers": {
+    "playwright": {
+      "command": "npx @playwright/mcp@latest",
+      "env": {}
+    },
     "supabase": {
       "url": "https://mcp.supabase.com/mcp"
     }

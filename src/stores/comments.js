@@ -18,14 +18,28 @@ export const useCommentsStore = defineStore('comments', {
     threadsByElement: (state) => {
       const threads = {}
       state.comments.forEach(comment => {
+        if (comment.parent_comment_id) return // skip replies here
         const key = comment.element_id || 'canvas'
         if (!threads[key]) threads[key] = []
-        if (!comment.parent_comment_id) {
-          threads[key].push({
-            ...comment,
-            replies: state.comments.filter(c => c.parent_comment_id === comment.id)
-          })
-        }
+        threads[key].push({
+          ...comment,
+          replies: state.comments.filter(c => c.parent_comment_id === comment.id)
+        })
+      })
+      return threads
+    },
+
+    // Active (non-deleted) threads per element — used for bubble count
+    activeThreadsByElement: (state) => {
+      const threads = {}
+      state.comments.forEach(comment => {
+        if (comment.parent_comment_id || comment.deleted) return
+        const key = comment.element_id || 'canvas'
+        if (!threads[key]) threads[key] = []
+        threads[key].push({
+          ...comment,
+          replies: state.comments.filter(c => c.parent_comment_id === comment.id)
+        })
       })
       return threads
     },
@@ -111,12 +125,13 @@ export const useCommentsStore = defineStore('comments', {
       }
     },
 
-    async addComment(projectId, content, elementId = null, parentCommentId = null, attachment = null) {
+    async addComment(projectId, content, elementId = null, parentCommentId = null, attachment = null, replyToId = null) {
       const auth = useAuthStore()
       const comment = {
         project_id: projectId,
         element_id: elementId,
         parent_comment_id: parentCommentId,
+        reply_to_id: replyToId,
         user_id: auth.userId,
         content,
         attachment_type: attachment?.type || null,
@@ -204,14 +219,16 @@ export const useCommentsStore = defineStore('comments', {
       if (!isSupabaseConfigured) return
 
       try {
+        // Soft-delete: mark as deleted but keep in DB
         const { error } = await supabase
           .from('canvas_comments')
-          .delete()
+          .update({ deleted: true })
           .eq('id', id)
 
         if (error) throw error
 
-        this.comments = this.comments.filter(c => c.id !== id && c.parent_comment_id !== id)
+        const comment = this.comments.find(c => c.id === id)
+        if (comment) comment.deleted = true
       } catch (err) {
         console.error('[Comments] Delete failed:', err.message)
       }

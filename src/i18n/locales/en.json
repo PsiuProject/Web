@@ -74,7 +74,21 @@
     "educational": "Educational Activity",
     "tracking": "Tracker Connection",
     "partOf": "Part Of",
-    "originatesFrom": "Originates From"
+    "originatesFrom": "Originates From",
+    "related": "Related",
+    "partner": "Partner",
+    "supplier": "Supplier",
+    "service": "Service",
+    "selectType": "Select Connection Type",
+    "customColor": "Custom Color"
+  },
+  "common": {
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "close": "Close",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit"
   },
   "footer": {
     "coords": "EG_SA // X: {x} // Y: {y}",
