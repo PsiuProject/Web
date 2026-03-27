@@ -5,13 +5,18 @@ import { usePermissionsStore } from '../stores/permissions'
 const routes = [
   {
     path: '/',
-    name: 'welcome',
-    component: () => import('../views/WelcomeView.vue')
+    name: 'landing',
+    component: () => import('../views/LandingPage.vue')
   },
   {
     path: '/gallery',
     name: 'gallery',
     component: () => import('../views/GalleryView.vue')
+  },
+  {
+    path: '/welcome',
+    name: 'welcome',
+    component: () => import('../views/WelcomeView.vue')
   },
   {
     path: '/select',

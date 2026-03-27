@@ -1,10 +1,13 @@
 <template>
   <header class="app-header" :class="`mode-${mode}`">
     <div class="header-left">
-      <router-link to="/" class="logo">EG<span>.SUR</span></router-link>
+      <router-link to="/" class="logo">
+        EG
+        <span>.SUR</span>
+      </router-link>
 
       <!-- Gallery mode: NO section filters (clean view) -->
-      
+
       <!-- Project mode: view/edit/comment/present tabs — filtered by role -->
       <!-- 
         Viewer role: View | Present only
@@ -12,11 +15,27 @@
         Editor/Owner role: View | Comment | Edit | Present
       -->
       <nav v-if="projectId" class="mode-nav">
-        <router-link :to="`/${projectId}/view`" :class="{ active: mode === 'view' }">View</router-link>
-        <router-link v-if="permissions.canComment" :to="`/${projectId}/comment`" :class="{ active: mode === 'comment' }">Comment</router-link>
-        <router-link v-if="permissions.canEdit" :to="`/${projectId}/edit`" :class="{ active: mode === 'edit' }">Edit</router-link>
+        <router-link :to="`/${projectId}/view`" :class="{ active: mode === 'view' }">
+          View
+        </router-link>
+        <router-link
+          v-if="permissions.canComment"
+          :to="`/${projectId}/comment`"
+          :class="{ active: mode === 'comment' }"
+        >
+          Comment
+        </router-link>
+        <router-link
+          v-if="permissions.canEdit"
+          :to="`/${projectId}/edit`"
+          :class="{ active: mode === 'edit' }"
+        >
+          Edit
+        </router-link>
         <!-- Presentation is always visible for all roles -->
-        <router-link :to="`/${projectId}/present`" :class="{ active: mode === 'present' }">Present</router-link>
+        <router-link :to="`/${projectId}/present`" :class="{ active: mode === 'present' }">
+          Present
+        </router-link>
       </nav>
     </div>
 
@@ -29,12 +48,23 @@
       <router-link v-if="projectId" to="/gallery" class="gallery-btn">Gallery</router-link>
 
       <!-- Fork button (all roles when in project mode - requires login) -->
-      <button v-if="projectId && auth.isLoggedIn" class="fork-btn" @click="forkProject" :disabled="forking" :title="'Fork project to your account'">
+      <button
+        v-if="projectId && auth.isLoggedIn"
+        class="fork-btn"
+        @click="forkProject"
+        :disabled="forking"
+        :title="'Fork project to your account'"
+      >
         {{ forking ? '...' : '⑂ Fork' }}
       </button>
 
       <!-- Export button (all roles when in project mode) -->
-      <button v-if="projectId" class="export-btn" @click="showExportMenu = !showExportMenu" title="Export / Download">
+      <button
+        v-if="projectId"
+        class="export-btn"
+        @click="showExportMenu = !showExportMenu"
+        title="Export / Download"
+      >
         ↓ Export
       </button>
 
@@ -46,7 +76,11 @@
       </div>
 
       <!-- Notification bell -->
-      <button v-if="auth.isLoggedIn && comments.unreadCount > 0" class="notif-btn" @click="showNotifications = !showNotifications">
+      <button
+        v-if="auth.isLoggedIn && comments.unreadCount > 0"
+        class="notif-btn"
+        @click="showNotifications = !showNotifications"
+      >
         {{ comments.unreadCount }}
       </button>
 
@@ -65,7 +99,11 @@
             <strong>{{ auth.userName }}</strong>
             <small>{{ auth.userEmail }}</small>
           </div>
-          <button @click="auth.logout(); showUserMenu = false">Logout</button>
+          <button
+            @click="auth.logout(); showUserMenu = false"
+          >
+            Logout
+          </button>
         </div>
       </div>
 
@@ -81,7 +119,13 @@
         <button @click="showNotifications = false">&times;</button>
       </div>
       <div class="notifications-list">
-        <div v-for="notif in comments.notifications" :key="notif.id" class="notification-item" :class="{ unread: !notif.read }" @click="goToComment(notif)">
+        <div
+          v-for="notif in comments.notifications"
+          :key="notif.id"
+          class="notification-item"
+          :class="{ unread: !notif.read }"
+          @click="goToComment(notif)"
+        >
           <p>{{ notif.comment?.content }}</p>
           <button @click.stop="comments.markAsRead(notif.id)">Mark read</button>
         </div>
@@ -96,15 +140,29 @@
         <form @submit.prevent="createProject" class="new-project-form">
           <div class="form-group">
             <label>Title (PT)</label>
-            <input v-model="newProject.title_pt" type="text" required placeholder="Titulo do projeto" />
+            <input
+              v-model="newProject.title_pt"
+              type="text"
+              required
+              placeholder="Titulo do projeto"
+            />
           </div>
           <div class="form-group">
             <label>Title (EN)</label>
-            <input v-model="newProject.title_en" type="text" placeholder="Project title (optional)" />
+            <input
+              v-model="newProject.title_en"
+              type="text"
+              placeholder="Project title (optional)"
+            />
           </div>
           <div class="form-group">
             <label>Description (PT)</label>
-            <textarea v-model="newProject.description_pt" rows="3" required placeholder="Descricao breve"></textarea>
+            <textarea
+              v-model="newProject.description_pt"
+              rows="3"
+              required
+              placeholder="Descricao breve"
+            ></textarea>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -125,7 +183,9 @@
             </div>
           </div>
           <div class="form-actions">
-            <button type="button" class="cancel-btn" @click="showNewProjectModal = false">Cancel</button>
+            <button type="button" class="cancel-btn" @click="showNewProjectModal = false">
+              Cancel
+            </button>
             <button type="submit" class="create-btn" :disabled="creating">
               {{ creating ? 'Creating...' : 'Create' }}
             </button>
@@ -138,19 +198,69 @@
   <!-- Section Filters - Dynamic placement based on mode -->
   <nav v-if="mode === 'view' || mode === 'comment'" class="section-filters-top">
     <a href="#" class="filter-link" @click.prevent="galleryStore.clearFocus()">All</a>
-    <a href="#" class="filter-link" :class="{ active: galleryStore.focusedType === 'active' }" @click.prevent="galleryStore.focusSection('active')">Active</a>
-    <a href="#" class="filter-link" :class="{ active: galleryStore.focusedType === 'pipeline' }" @click.prevent="galleryStore.focusSection('pipeline')">Pipeline</a>
-    <a href="#" class="filter-link" :class="{ active: galleryStore.focusedType === 'done' }" @click.prevent="galleryStore.focusSection('done')">Done</a>
-    <button v-if="auth.isLoggedIn && mode === 'edit'" class="new-project-mini" @click="showNewProjectModal = true">+ NEW</button>
+    <a
+      href="#"
+      class="filter-link"
+      :class="{ active: galleryStore.focusedType === 'active' }"
+      @click.prevent="galleryStore.focusSection('active')"
+    >
+      Active
+    </a>
+    <a
+      href="#"
+      class="filter-link"
+      :class="{ active: galleryStore.focusedType === 'pipeline' }"
+      @click.prevent="galleryStore.focusSection('pipeline')"
+    >
+      Pipeline
+    </a>
+    <a
+      href="#"
+      class="filter-link"
+      :class="{ active: galleryStore.focusedType === 'done' }"
+      @click.prevent="galleryStore.focusSection('done')"
+    >
+      Done
+    </a>
+    <button
+      v-if="auth.isLoggedIn && mode === 'edit'"
+      class="new-project-mini"
+      @click="showNewProjectModal = true"
+    >
+      + NEW
+    </button>
   </nav>
 
   <!-- Minimized section filters at bottom for edit mode -->
   <nav v-if="mode === 'edit'" class="section-filters-bottom">
     <a href="#" class="filter-link mini" @click.prevent="galleryStore.clearFocus()">All</a>
-    <a href="#" class="filter-link mini" :class="{ active: galleryStore.focusedType === 'active' }" @click.prevent="galleryStore.focusSection('active')">Active</a>
-    <a href="#" class="filter-link mini" :class="{ active: galleryStore.focusedType === 'pipeline' }" @click.prevent="galleryStore.focusSection('pipeline')">Pipeline</a>
-    <a href="#" class="filter-link mini" :class="{ active: galleryStore.focusedType === 'done' }" @click.prevent="galleryStore.focusSection('done')">Done</a>
-    <button v-if="auth.isLoggedIn" class="new-project-mini" @click="showNewProjectModal = true">+ NEW</button>
+    <a
+      href="#"
+      class="filter-link mini"
+      :class="{ active: galleryStore.focusedType === 'active' }"
+      @click.prevent="galleryStore.focusSection('active')"
+    >
+      Active
+    </a>
+    <a
+      href="#"
+      class="filter-link mini"
+      :class="{ active: galleryStore.focusedType === 'pipeline' }"
+      @click.prevent="galleryStore.focusSection('pipeline')"
+    >
+      Pipeline
+    </a>
+    <a
+      href="#"
+      class="filter-link mini"
+      :class="{ active: galleryStore.focusedType === 'done' }"
+      @click.prevent="galleryStore.focusSection('done')"
+    >
+      Done
+    </a>
+    <button v-if="auth.isLoggedIn" class="new-project-mini" @click="showNewProjectModal = true">
+      + NEW
+    </button>
   </nav>
 </template>
 
@@ -186,14 +296,20 @@ const showNewProjectModal = ref(false)
 const showExportMenu = ref(false)
 const creating = ref(false)
 const forking = ref(false)
-const newProject = ref({ title_pt: '', title_en: '', description_pt: '', status: 'active', privacy: 'private' })
+const newProject = ref({
+  title_pt: '',
+  title_en: '',
+  description_pt: '',
+  status: 'active',
+  privacy: 'private'
+})
 const isDev = import.meta.env.DEV
 
 const projectId = computed(() => route.params.projectId)
 
 const currentProjectName = computed(() => {
   if (!projectId.value) return ''
-  const p = projects.projects.find(p => p.id === projectId.value)
+  const p = projects.projects.find((p) => p.id === projectId.value)
   if (!p) return ''
   const t = p.title
   if (typeof t === 'object') return t[i18nStore.currentLocale] || t.pt || t.en || ''
@@ -212,26 +328,35 @@ async function forkProject() {
   if (!auth.isLoggedIn || !projectId.value) return
   forking.value = true
   try {
-    const src = projects.projects.find(p => p.id === projectId.value)
+    const src = projects.projects.find((p) => p.id === projectId.value)
     if (!src || !isSupabaseConfigured) return
-    const { data: newP, error } = await supabase.from('projects').insert({
-      title: src.title,
-      description: src.description,
-      status: src.status,
-      privacy: 'private',
-      size: src.size || 'card-md',
-      territory: src.territory,
-      axis: src.axis || [],
-      year: src.year || new Date().getFullYear(),
-      position_x: Math.random() * 400,
-      position_y: Math.random() * 300,
-      owner_id: auth.userId
-    }).select().single()
+    const { data: newP, error } = await supabase
+      .from('projects')
+      .insert({
+        title: src.title,
+        description: src.description,
+        status: src.status,
+        privacy: 'private',
+        size: src.size || 'card-md',
+        territory: src.territory,
+        axis: src.axis || [],
+        year: src.year || new Date().getFullYear(),
+        position_x: Math.random() * 400,
+        position_y: Math.random() * 300,
+        owner_id: auth.userId
+      })
+      .select()
+      .single()
     if (error) throw error
-    const { data: elems } = await supabase.from('canvas_elements').select('*').eq('project_id', projectId.value)
+    const { data: elems } = await supabase
+      .from('canvas_elements')
+      .select('*')
+      .eq('project_id', projectId.value)
     if (elems?.length) {
       const newElems = elems.map(({ id, created_at, updated_at, ...rest }) => ({
-        ...rest, project_id: newP.id, created_by: auth.userId
+        ...rest,
+        project_id: newP.id,
+        created_by: auth.userId
       }))
       await supabase.from('canvas_elements').insert(newElems)
     }
@@ -245,7 +370,7 @@ async function forkProject() {
 
 function exportProject() {
   if (!projectId.value) return
-  const src = projects.projects.find(p => p.id === projectId.value)
+  const src = projects.projects.find((p) => p.id === projectId.value)
   if (!src) return
   const blob = new Blob([JSON.stringify(src, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
@@ -265,7 +390,9 @@ async function exportAsPNG() {
   showExportMenu.value = false
   // PNG export would require html2canvas library
   // For now, use browser's screenshot functionality
-  alert('For PNG export, use your browser\'s screenshot functionality (Cmd+Shift+4 on Mac, Win+Shift+S on Windows), or install html2canvas package.')
+  alert(
+    "For PNG export, use your browser's screenshot functionality (Cmd+Shift+4 on Mac, Win+Shift+S on Windows), or install html2canvas package."
+  )
 }
 
 async function exportAsPDF() {
@@ -284,7 +411,10 @@ async function createProject() {
   creating.value = true
   try {
     const data = {
-      title: { pt: newProject.value.title_pt, ...(newProject.value.title_en ? { en: newProject.value.title_en } : {}) },
+      title: {
+        pt: newProject.value.title_pt,
+        ...(newProject.value.title_en ? { en: newProject.value.title_en } : {})
+      },
       description: { pt: newProject.value.description_pt },
       status: newProject.value.status,
       privacy: newProject.value.privacy,
@@ -297,7 +427,13 @@ async function createProject() {
     }
     const created = await projects.createProject(data)
     if (created) {
-      newProject.value = { title_pt: '', title_en: '', description_pt: '', status: 'active', privacy: 'private' }
+      newProject.value = {
+        title_pt: '',
+        title_en: '',
+        description_pt: '',
+        status: 'active',
+        privacy: 'private'
+      }
       showNewProjectModal.value = false
       router.push({ name: 'canvas-edit', params: { projectId: created.id } })
     }
@@ -365,7 +501,8 @@ async function createProject() {
   align-items: center;
 }
 
-.section-nav .nav-link, .section-nav .new-project-btn {
+.section-nav .nav-link,
+.section-nav .new-project-btn {
   padding: 0.35rem 0.75rem;
   font-family: 'Space Mono', monospace;
   font-size: 0.7rem;
@@ -447,9 +584,12 @@ async function createProject() {
   cursor: pointer;
   transition: all 0.2s;
 }
-.gallery-btn:hover { background: rgba(106, 125, 91, 0.3); }
+.gallery-btn:hover {
+  background: rgba(106, 125, 91, 0.3);
+}
 
-.fork-btn, .export-btn {
+.fork-btn,
+.export-btn {
   padding: 0.35rem 0.65rem;
   background: transparent;
   border: 1px solid var(--moss);
@@ -460,11 +600,23 @@ async function createProject() {
   cursor: pointer;
   transition: all 0.2s;
 }
-.fork-btn:hover:not(:disabled) { background: rgba(106, 125, 91, 0.15); border-color: var(--terracotta); color: var(--terracotta); }
-.fork-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.export-btn:hover { background: rgba(106, 125, 91, 0.15); }
+.fork-btn:hover:not(:disabled) {
+  background: rgba(106, 125, 91, 0.15);
+  border-color: var(--terracotta);
+  color: var(--terracotta);
+}
+.fork-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.export-btn:hover {
+  background: rgba(106, 125, 91, 0.15);
+}
 
-.notif-btn, .lang-toggle, .user-btn, .login-btn {
+.notif-btn,
+.lang-toggle,
+.user-btn,
+.login-btn {
   padding: 0.35rem 0.65rem;
   background: transparent;
   border: 1px solid var(--moss);
@@ -475,7 +627,9 @@ async function createProject() {
   transition: all 0.2s;
 }
 
-.notif-btn:hover, .lang-toggle:hover, .login-btn:hover {
+.notif-btn:hover,
+.lang-toggle:hover,
+.login-btn:hover {
   border-color: var(--moss-light);
   background: rgba(106, 125, 91, 0.1);
 }
@@ -487,7 +641,9 @@ async function createProject() {
   font-weight: 700;
 }
 
-.user-info { position: relative; }
+.user-info {
+  position: relative;
+}
 
 .user-btn {
   width: 32px;
@@ -527,8 +683,14 @@ async function createProject() {
   border-bottom: 1px solid var(--moss);
 }
 
-.user-menu-header strong { color: var(--paper); font-size: 0.85rem; }
-.user-menu-header small { color: var(--moss-light); font-size: 0.7rem; }
+.user-menu-header strong {
+  color: var(--paper);
+  font-size: 0.85rem;
+}
+.user-menu-header small {
+  color: var(--moss-light);
+  font-size: 0.7rem;
+}
 
 .user-menu button {
   width: 100%;
@@ -541,7 +703,9 @@ async function createProject() {
   cursor: pointer;
 }
 
-.user-menu button:hover { background: rgba(106, 125, 91, 0.1); }
+.user-menu button:hover {
+  background: rgba(106, 125, 91, 0.1);
+}
 
 /* Notifications */
 .notifications-panel {
@@ -565,10 +729,23 @@ async function createProject() {
   border-bottom: 1px solid var(--moss);
 }
 
-.notifications-header h3 { margin: 0; font-size: 0.85rem; color: var(--paper); }
-.notifications-header button { background: transparent; border: none; color: var(--moss-light); font-size: 1.2rem; cursor: pointer; }
+.notifications-header h3 {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--paper);
+}
+.notifications-header button {
+  background: transparent;
+  border: none;
+  color: var(--moss-light);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
 
-.notifications-list { max-height: 320px; overflow-y: auto; }
+.notifications-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
 
 .notification-item {
   padding: 0.75rem 1rem;
@@ -577,9 +754,18 @@ async function createProject() {
   transition: background 0.15s;
 }
 
-.notification-item:hover { background: rgba(106, 125, 91, 0.05); }
-.notification-item.unread { background: rgba(255, 95, 31, 0.05); border-left: 3px solid var(--terracotta); }
-.notification-item p { margin: 0 0 0.4rem 0; font-size: 0.8rem; color: var(--paper); }
+.notification-item:hover {
+  background: rgba(106, 125, 91, 0.05);
+}
+.notification-item.unread {
+  background: rgba(255, 95, 31, 0.05);
+  border-left: 3px solid var(--terracotta);
+}
+.notification-item p {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.8rem;
+  color: var(--paper);
+}
 .notification-item button {
   padding: 0.2rem 0.4rem;
   background: transparent;
@@ -589,12 +775,20 @@ async function createProject() {
   cursor: pointer;
 }
 
-.empty-notif { padding: 2rem; text-align: center; color: var(--moss-light); font-size: 0.8rem; }
+.empty-notif {
+  padding: 2rem;
+  text-align: center;
+  color: var(--moss-light);
+  font-size: 0.8rem;
+}
 
 /* New Project Modal */
 .modal-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
@@ -620,9 +814,17 @@ async function createProject() {
   text-align: center;
 }
 
-.new-project-form { display: flex; flex-direction: column; gap: 1rem; }
+.new-project-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 
-.form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
 .form-group label {
   font-family: 'Space Mono', monospace;
   font-size: 0.65rem;
@@ -630,7 +832,9 @@ async function createProject() {
   text-transform: uppercase;
 }
 
-.form-group input, .form-group textarea, .form-group select {
+.form-group input,
+.form-group textarea,
+.form-group select {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--moss);
   color: var(--paper);
@@ -639,11 +843,26 @@ async function createProject() {
   font-size: 0.85rem;
 }
 
-.form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--terracotta); }
-.form-group textarea { resize: vertical; min-height: 60px; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--terracotta);
+}
+.form-group textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
 
-.form-actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
 
 .cancel-btn {
   flex: 1;
@@ -670,8 +889,13 @@ async function createProject() {
   text-transform: uppercase;
 }
 
-.create-btn:hover { background: var(--stencil-orange); }
-.create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.create-btn:hover {
+  background: var(--stencil-orange);
+}
+.create-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* Section Filters - Dynamic placement */
 .section-filters-top {

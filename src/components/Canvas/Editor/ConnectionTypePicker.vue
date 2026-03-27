@@ -237,6 +237,8 @@ function close() {
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--moss) rgba(13, 13, 13, 0.5);
+  flex: 1;
+  min-height: 0;
 }
 
 .picker-types::-webkit-scrollbar {
@@ -314,6 +316,7 @@ function close() {
 
 .picker-custom {
   margin-bottom: clamp(0.4rem, 0.7vh, 0.6rem);
+  flex-shrink: 0;
 }
 
 .custom-label {
@@ -376,7 +379,9 @@ function close() {
 .picker-actions {
   display: flex;
   gap: clamp(0.3rem, 0.5vw, 0.4rem);
-  margin-top: clamp(0.4rem, 0.7vh, 0.6rem);
+  margin-top: auto;
+  padding-top: clamp(0.4rem, 0.7vh, 0.6rem);
+  flex-shrink: 0;
 }
 
 .btn-cancel,

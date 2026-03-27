@@ -30,8 +30,8 @@
         @port-leave="onPortLeave"
       />
 
-      <!-- Connection lines layer - must be AFTER elements so it's on top -->
-      <svg class="connections-layer-svg">
+      <!-- Connection lines layer - BEHIND elements (lower z-index) -->
+      <svg class="connections-layer-svg" style="z-index: 1">
         <g v-for="conn in elements.manualConnections" :key="conn.id">
           <ConnectionLine
             :x1="conn.x1"
@@ -1004,8 +1004,8 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  pointer-events: none;
-  z-index: 50;
+  pointer-events: auto; /* Allow pointer events for connection line interactions */
+  z-index: 1; /* Behind all canvas elements */
   overflow: visible;
   display: block;
 }

@@ -11,7 +11,13 @@
   >
     <!-- Resize handles -->
     <template v-if="isSelected && isEditMode">
-      <div v-for="handle in resizeHandles" :key="handle" class="resize-handle" :class="handle" @mousedown.stop="onResizeStart($event, handle)" />
+      <div
+        v-for="handle in resizeHandles"
+        :key="handle"
+        class="resize-handle"
+        :class="handle"
+        @mousedown.stop="onResizeStart($event, handle)"
+      />
     </template>
 
     <!-- Card title -->
@@ -32,10 +38,10 @@
         v-for="(cell, idx) in cells"
         :key="cell.id"
         class="card-cell"
-        :class="{ 
-          'drag-over': dragOverCell === idx, 
-          'empty': !cell.type,
-          'dragging': draggingCellIdx === idx,
+        :class="{
+          'drag-over': dragOverCell === idx,
+          empty: !cell.type,
+          dragging: draggingCellIdx === idx,
           'full-width': cell.width === 'full' || !cell.column,
           'half-width': cell.column === 'left' || cell.column === 'right'
         }"
@@ -69,18 +75,60 @@
             @keyup="updateCellFormatState()"
             @click.stop="showCellToolbar = true; updateCellToolbarPosition(idx)"
             @dblclick.stop="showCellToolbar = true; updateCellToolbarPosition(idx)"
-          >{{ getCellText(cell) }}</div>
-          <div v-if="isEditMode" class="cell-resize-handle bottom" @mousedown.stop="onCellResizeStart($event, idx)" title="Resize" />
+            v-html="getCellHTML(cell)"
+          />
+          <div
+            v-if="isEditMode"
+            class="cell-resize-handle bottom"
+            @mousedown.stop="onCellResizeStart($event, idx)"
+            title="Resize height"
+          />
+          <!-- Font size resize handle (bottom-right corner) -->
+          <div
+            v-if="isEditMode && (showCellToolbar || cellFormatStateHasSelection)"
+            class="cell-font-size-handle"
+            :style="cellFontSizeHandleStyle(idx)"
+            @mousedown.stop.prevent="onCellFontSizeResizeStart($event, idx)"
+            title="Drag to resize font size"
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+            >
+              <path d="M4 4h16v16" />
+              <path d="M4 20l8-8" />
+            </svg>
+            <span class="font-size-preview">{{ cell.fontSize || 14 }}</span>
+          </div>
         </template>
 
         <!-- Image cell -->
         <template v-else-if="cell.type === 'image'">
           <img v-if="cell.url" :src="cell.url" class="cell-image" :style="cellImageStyle(cell)" />
-          <div v-else class="cell-image-placeholder" @click.stop="isEditMode && triggerCellImageUpload(idx)">
+          <div
+            v-else
+            class="cell-image-placeholder"
+            @click.stop="isEditMode && triggerCellImageUpload(idx)"
+          >
             <span>&#128247; Click to add image</span>
           </div>
-          <input type="file" :ref="el => cellFileInputs[idx] = el" accept="image/*" @change="handleCellImageUpload($event, idx)" class="hidden-input" />
-          <div v-if="isEditMode" class="cell-resize-handle bottom" @mousedown.stop="onCellResizeStart($event, idx)" title="Resize" />
+          <input
+            type="file"
+            :ref="(el) => (cellFileInputs[idx] = el)"
+            accept="image/*"
+            @change="handleCellImageUpload($event, idx)"
+            class="hidden-input"
+          />
+          <div
+            v-if="isEditMode"
+            class="cell-resize-handle bottom"
+            @mousedown.stop="onCellResizeStart($event, idx)"
+            title="Resize"
+          />
         </template>
 
         <!-- Button cell -->
@@ -93,55 +141,168 @@
               :contenteditable="isEditMode"
               @click.prevent="isEditMode ? null : openLink(cell.url)"
               @blur="saveCellButtonText(idx, $event)"
-            >{{ getCellText(cell) || 'Button' }}</a>
+            >
+              {{ getCellText(cell) || 'Button' }}
+            </a>
           </div>
           <div v-if="isEditMode && !cell.url" class="cell-url-input">
-            <input type="text" placeholder="Button URL..." :value="cell.url || ''" @blur="saveCellUrl(idx, $event)" @keydown.enter="$event.target.blur()" />
+            <input
+              type="text"
+              placeholder="Button URL..."
+              :value="cell.url || ''"
+              @blur="saveCellUrl(idx, $event)"
+              @keydown.enter="$event.target.blur()"
+            />
           </div>
-          <div v-if="isEditMode" class="cell-resize-handle bottom" @mousedown.stop="onCellResizeStart($event, idx)" title="Resize" />
+          <div
+            v-if="isEditMode"
+            class="cell-resize-handle bottom"
+            @mousedown.stop="onCellResizeStart($event, idx)"
+            title="Resize"
+          />
         </template>
 
         <!-- Link cell -->
         <template v-else-if="cell.type === 'link'">
           <div class="cell-link-wrapper">
-            <input v-if="isEditMode" type="text" class="cell-link-input" placeholder="Link text..." :value="getCellText(cell)" @blur="saveCellText(idx, $event)" />
-            <input v-if="isEditMode" type="text" class="cell-link-input" placeholder="URL..." :value="cell.url || ''" @blur="saveCellUrl(idx, $event)" />
-            <a v-if="!isEditMode" :href="cell.url || '#'" class="cell-link" target="_blank" rel="noopener">
+            <input
+              v-if="isEditMode"
+              type="text"
+              class="cell-link-input"
+              placeholder="Link text..."
+              :value="getCellText(cell)"
+              @blur="saveCellText(idx, $event)"
+            />
+            <input
+              v-if="isEditMode"
+              type="text"
+              class="cell-link-input"
+              placeholder="URL..."
+              :value="cell.url || ''"
+              @blur="saveCellUrl(idx, $event)"
+            />
+            <a
+              v-if="!isEditMode"
+              :href="cell.url || '#'"
+              class="cell-link"
+              target="_blank"
+              rel="noopener"
+            >
               {{ getCellText(cell) || cell.url || 'Link' }}
             </a>
           </div>
         </template>
 
+        <!-- Card cell (nested card) -->
+        <template v-else-if="cell.type === 'card'">
+          <div class="cell-nested-card">
+            <Card
+              :element="getCellCardData(cell)"
+              :isSelected="false"
+              :isEditMode="isEditMode"
+              @click.stop
+              @port-click.stop
+              @port-drag-start.stop
+              @port-hover.stop
+              @port-leave.stop
+            />
+          </div>
+        </template>
+
         <!-- Cell actions (edit mode) -->
         <div v-if="isEditMode && cell.type" class="cell-actions">
-          <button class="cell-action-btn" @click.stop="removeCell(idx)" title="Remove">&times;</button>
+          <button class="cell-action-btn" @click.stop="removeCell(idx)" title="Remove">
+            &times;
+          </button>
           <button class="cell-action-btn drag-handle" title="Drag to reorder">&#8942;</button>
         </div>
       </div>
 
       <!-- Add cell button -->
       <button v-if="isEditMode" class="add-cell-btn" @click.stop="addEmptyCell">
-        <span class="plus">+</span> Add Cell
+        <span class="plus">+</span>
+        Add Cell
       </button>
     </div>
 
     <!-- Floating toolbar for card cell text formatting -->
     <Teleport to="body">
-      <div v-if="showCellToolbar && isEditMode" class="cell-format-toolbar" :style="cellToolbarStyle">
+      <div
+        v-if="showCellToolbar && isEditMode"
+        class="cell-format-toolbar"
+        :style="cellToolbarStyle"
+      >
         <div class="toolbar-group">
-          <button @mousedown.prevent="toggleCellFormat('bold')" :class="{ active: cellFormatState.bold }" title="Bold" class="tb-btn"><b>B</b></button>
-          <button @mousedown.prevent="toggleCellFormat('italic')" :class="{ active: cellFormatState.italic }" title="Italic" class="tb-btn"><i>I</i></button>
-          <button @mousedown.prevent="toggleCellFormat('underline')" :class="{ active: cellFormatState.underline }" title="Underline" class="tb-btn"><u>U</u></button>
-          <button @mousedown.prevent="toggleCellFormat('strikeThrough')" :class="{ active: cellFormatState.strikeThrough }" title="Strikethrough" class="tb-btn"><s>S</s></button>
+          <button
+            @mousedown.prevent="toggleCellFormat('bold')"
+            :class="{ active: cellFormatState.bold }"
+            title="Bold"
+            class="tb-btn"
+          >
+            <b>B</b>
+          </button>
+          <button
+            @mousedown.prevent="toggleCellFormat('italic')"
+            :class="{ active: cellFormatState.italic }"
+            title="Italic"
+            class="tb-btn"
+          >
+            <i>I</i>
+          </button>
+          <button
+            @mousedown.prevent="toggleCellFormat('underline')"
+            :class="{ active: cellFormatState.underline }"
+            title="Underline"
+            class="tb-btn"
+          >
+            <u>U</u>
+          </button>
+          <button
+            @mousedown.prevent="toggleCellFormat('strikeThrough')"
+            :class="{ active: cellFormatState.strikeThrough }"
+            title="Strikethrough"
+            class="tb-btn"
+          >
+            <s>S</s>
+          </button>
         </div>
         <div class="toolbar-divider"></div>
         <div class="toolbar-group font-size-group">
-          <button @mousedown.prevent="decreaseCellFontSize" title="Decrease Font Size" class="tb-btn tb-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 7V4h16v3M9 20h6M12 4v16"/><line x1="4" y1="18" x2="9" y2="18"/></svg>
+          <button
+            @mousedown.prevent="decreaseCellFontSize"
+            title="Decrease Font Size"
+            class="tb-btn tb-icon"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <path d="M4 7V4h16v3M9 20h6M12 4v16" />
+              <line x1="4" y1="18" x2="9" y2="18" />
+            </svg>
           </button>
           <span class="font-size-display">{{ currentCellFontSize }}</span>
-          <button @mousedown.prevent="increaseCellFontSize" title="Increase Font Size" class="tb-btn tb-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 7V4h16v3M9 20h6M12 4v16"/><line x1="4" y1="18" x2="9" y2="18"/><line x1="6.5" y1="15.5" x2="6.5" y2="20.5"/></svg>
+          <button
+            @mousedown.prevent="increaseCellFontSize"
+            title="Increase Font Size"
+            class="tb-btn tb-icon"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <path d="M4 7V4h16v3M9 20h6M12 4v16" />
+              <line x1="4" y1="18" x2="9" y2="18" />
+              <line x1="6.5" y1="15.5" x2="6.5" y2="20.5" />
+            </svg>
           </button>
         </div>
       </div>
@@ -158,7 +319,7 @@
         <button @click="cellMenuIdx = null" class="menu-cancel">Cancel</button>
       </div>
     </Teleport>
-    
+
     <!-- Connection type picker popup -->
     <ConnectionTypePicker
       :is-visible="showConnectionPicker"
@@ -175,7 +336,11 @@
       :x="cellContextMenuPosition.x"
       :y="cellContextMenuPosition.y"
       :items="cellContextMenuItems"
-      @update:is-visible="(val) => { if (!val) hideCellContextMenu() }"
+      @update:is-visible="
+        (val) => {
+          if (!val) hideCellContextMenu()
+        }
+      "
       @action="handleCellContextMenuAction"
     />
 
@@ -183,7 +348,7 @@
     <div v-if="isDragOver" class="drop-indicator">
       <span>Drop here to add to card</span>
     </div>
-    
+
     <!-- Connection ports (visible in connection mode) -->
     <template v-if="showPorts">
       <ConnectionPort
@@ -192,7 +357,9 @@
         :side="side"
         :element="element"
         :color="portColor"
-        :is-highlighted="highlightedPort?.elementId === element.id && highlightedPort?.side === side"
+        :is-highlighted="
+          highlightedPort?.elementId === element.id && highlightedPort?.side === side
+        "
         @mousedown.stop
         @click="$emit('port-click', { element, side })"
         @drag-start="$emit('port-drag-start', { element, side, color: portColor })"
@@ -200,14 +367,18 @@
         @leave="$emit('port-leave', { element, side })"
       />
     </template>
-    
+
     <!-- Card context menu -->
     <ContextMenu
       :is-visible="cardContextMenuVisible"
       :x="cardContextMenuPosition.x"
       :y="cardContextMenuPosition.y"
       :items="cardContextMenuItems"
-      @update:is-visible="(val) => { if (!val) hideCardContextMenu() }"
+      @update:is-visible="
+        (val) => {
+          if (!val) hideCardContextMenu()
+        }
+      "
       @action="handleCardContextMenuAction"
     />
   </div>
@@ -239,7 +410,14 @@ const props = defineProps({
   highlightedPort: { type: Object, default: null }
 })
 
-const emit = defineEmits(['click', 'dblclick', 'port-click', 'port-drag-start', 'port-hover', 'port-leave'])
+const emit = defineEmits([
+  'click',
+  'dblclick',
+  'port-click',
+  'port-drag-start',
+  'port-hover',
+  'port-leave'
+])
 
 const elements = useElementsStore()
 const viewport = useViewportStore()
@@ -257,6 +435,8 @@ const cellToolbarPosition = ref({ x: 0, y: 0 })
 const currentCellIdx = ref(null)
 const cellFormatState = ref({ bold: false, italic: false, underline: false, strikeThrough: false })
 const currentCellFontSize = ref(14)
+const cellInlineEditingIdx = ref(null) // Track which cell is being inline edited
+const cellFormatStateHasSelection = ref(false) // Track if there's a text selection
 
 // Context menu for cells - using inline state management
 const cellContextMenuVisible = ref(false)
@@ -302,7 +482,7 @@ function hideCardContextMenu() {
 }
 
 function handleCardContextMenuAction(action) {
-  switch(action) {
+  switch (action) {
     case 'edit-card':
       elements.selectElement(props.element.id)
       break
@@ -313,7 +493,9 @@ function handleCardContextMenuAction(action) {
       elements.updateElement(props.element.id, { z_index: (props.element.z_index || 0) + 1 })
       break
     case 'send-back':
-      elements.updateElement(props.element.id, { z_index: Math.max(0, (props.element.z_index || 0) - 1) })
+      elements.updateElement(props.element.id, {
+        z_index: Math.max(0, (props.element.z_index || 0) - 1)
+      })
       break
     case 'connection-type':
       // Open connection type picker
@@ -352,7 +534,9 @@ function duplicateCard() {
     position_x: props.element.position_x + 20,
     position_y: props.element.position_y + 20
   }
-  elements.createElement(route.params.projectId, 'card', 
+  elements.createElement(
+    route.params.projectId,
+    'card',
     { x: newCard.position_x, y: newCard.position_y },
     { width: newCard.width, height: newCard.height }
   )
@@ -362,7 +546,8 @@ const cellTypes = [
   { type: 'text', label: 'Text', icon: 'T' },
   { type: 'image', label: 'Image', icon: '&#128247;' },
   { type: 'button', label: 'Button', icon: '&#9744;' },
-  { type: 'link', label: 'Link', icon: '&#128279;' }
+  { type: 'link', label: 'Link', icon: '&#128279;' },
+  { type: 'card', label: 'Card', icon: '&#128446;' } // Add card as a cell type
 ]
 
 const resizeHandles = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
@@ -380,7 +565,7 @@ const cardTitle = computed(() => {
 const cardStyle = computed(() => {
   const el = props.element
   const style = el.style || {}
-  
+
   // Build transform string with rotation and scale
   let transform = `rotate(${el.rotation || 0}deg)`
   if (style.scaleX && style.scaleX !== 1) {
@@ -389,7 +574,7 @@ const cardStyle = computed(() => {
   if (style.scaleY && style.scaleY !== 1) {
     transform = `scaleY(${style.scaleY}) ${transform}`
   }
-  
+
   // Build border radius CSS
   let borderRadius = '0'
   if (style.borderRadius) {
@@ -402,7 +587,7 @@ const cardStyle = computed(() => {
       borderRadius = style.borderRadius
     }
   }
-  
+
   // Build box-shadow CSS
   let boxShadow = 'none'
   if (style.shadow) {
@@ -412,13 +597,13 @@ const cardStyle = computed(() => {
     const b = parseInt(color.slice(5, 7), 16)
     boxShadow = `${x}px ${y}px ${blur}px ${spread}px rgba(${r}, ${g}, ${b}, ${opacity})`
   }
-  
+
   // Build border CSS
   const borderWidth = style.borderWidth || 0
   const borderColor = style.borderColor || 'var(--moss)'
   const borderStyle = style.borderStyle || 'solid'
   const border = borderWidth > 0 ? `${borderWidth}px ${borderStyle} ${borderColor}` : 'none'
-  
+
   return {
     left: `${el.position_x}px`,
     top: `${el.position_y}px`,
@@ -448,6 +633,21 @@ const cellToolbarStyle = computed(() => ({
   top: `${cellToolbarPosition.value.y}px`,
   zIndex: 9001
 }))
+
+// Font size resize handle style for cell text
+const cellFontSizeHandleStyle = (idx) => {
+  const cell = cells.value[idx]
+  if (!cell) return {}
+  
+  // Position at bottom-right of cell text
+  const fontSize = cell.fontSize || 14
+  const scale = Math.max(0.8, Math.min(2, fontSize / 14)) // Scale based on font size
+  
+  return {
+    transform: `scale(${scale})`,
+    transformOrigin: 'bottom right'
+  }
+}
 
 // Cell wrapper style for dynamic width layout
 const cellWrapperStyle = (cell, idx) => {
@@ -488,6 +688,50 @@ function getCellText(cell) {
   return t
 }
 
+function getCellHTML(cell) {
+  // Get HTML content from cell text, preserving formatting
+  const t = cell.text
+  if (!t) return ''
+  if (typeof t === 'object') {
+    const html = t[i18nStore.currentLocale] ?? t.pt ?? t.en ?? ''
+    // If it contains HTML tags, sanitize and return
+    if (html.includes('<')) {
+      return sanitizeHTML(html)
+    }
+    // Otherwise convert newlines to <br>
+    return html.replace(/\n/g, '<br>')
+  }
+  // Plain string - convert newlines to <br>
+  return String(t).replace(/\n/g, '<br>')
+}
+
+function isCellInlineEditing(idx) {
+  return cellInlineEditingIdx.value === idx
+}
+
+function getCellCardData(cell) {
+  // Return a nested card element structure from cell data
+  return {
+    id: cell.cardId || `cell-card-${cell.id}`,
+    type: 'card',
+    content: {
+      title: cell.cardTitle || { pt: 'Nested Card' },
+      cells: cell.cardCells || []
+    },
+    style: cell.cardStyle || {
+      background: 'rgba(30, 30, 28, 0.95)',
+      borderColor: '#6a7d5b',
+      borderWidth: 1
+    },
+    position_x: 0,
+    position_y: 0,
+    width: cell.cardWidth || 200,
+    height: cell.cardHeight || 150,
+    z_index: 0,
+    rotation: 0
+  }
+}
+
 function cellTextStyle(cell) {
   return {
     fontSize: `${cell.fontSize || 14}px`,
@@ -523,7 +767,9 @@ function saveTitle(e) {
   let updated
   if (typeof current === 'object') updated = { ...current, [i18nStore.currentLocale]: newTitle }
   else updated = { pt: newTitle }
-  elements.updateElement(props.element.id, { content: { ...props.element.content, title: updated } })
+  elements.updateElement(props.element.id, {
+    content: { ...props.element.content, title: updated }
+  })
 }
 
 // Sync title ref without overwriting user edits mid-type
@@ -542,14 +788,16 @@ const addCleanup = (fn) => {
 }
 
 onUnmounted(() => {
-  cleanupFns.forEach(fn => fn())
+  cleanupFns.forEach((fn) => fn())
   cleanupFns = []
 })
 
 watch(cardTitle, () => syncTitle())
 
 function saveCells(newCells) {
-  elements.updateElement(props.element.id, { content: { ...props.element.content, cells: newCells } })
+  elements.updateElement(props.element.id, {
+    content: { ...props.element.content, cells: newCells }
+  })
 }
 
 function addEmptyCell() {
@@ -565,11 +813,12 @@ function removeCell(idx) {
 function showCellMenu(idx) {
   // Position menu near the cell
   const el = props.element
-  const screenX = el.position_x * viewport.zoom + viewport.translateX + el.width / 2 * viewport.zoom
+  const screenX =
+    el.position_x * viewport.zoom + viewport.translateX + (el.width / 2) * viewport.zoom
   const screenY = el.position_y * viewport.zoom + viewport.translateY + 100 + idx * 60
-  cellMenuPosition.value = { 
-    x: Math.min(screenX, window.innerWidth - 200), 
-    y: Math.min(screenY, window.innerHeight - 250) 
+  cellMenuPosition.value = {
+    x: Math.min(screenX, window.innerWidth - 200),
+    y: Math.min(screenY, window.innerHeight - 250)
   }
   cellMenuIdx.value = idx
 }
@@ -577,12 +826,22 @@ function showCellMenu(idx) {
 function setCellType(idx, type) {
   const newCells = cells.value.map((c, i) => {
     if (i !== idx) return c
-    return { 
-      ...c, 
-      type, 
-      text: { pt: '' },
-      height: type === 'image' ? 120 : type === 'button' ? 44 : 40
+    const base = {
+      ...c,
+      type,
+      height: type === 'image' ? 120 : type === 'button' ? 44 : type === 'card' ? 200 : 40
     }
+    // Initialize card-specific data
+    if (type === 'card') {
+      base.cardId = Date.now().toString()
+      base.cardTitle = { pt: 'Nested Card' }
+      base.cardCells = []
+      base.cardWidth = 200
+      base.cardHeight = 150
+    } else {
+      base.text = { pt: '' }
+    }
+    return base
   })
   saveCells(newCells)
   cellMenuIdx.value = null
@@ -592,21 +851,30 @@ function onCellRightClick(e, idx) {
   e.preventDefault()
   currentRightClickCellIdx.value = idx
   const cell = cells.value[idx]
-  
+
   // Get appropriate menu items based on cell type
   let menuItems = []
   if (!cell.type) {
-    menuItems = MenuItems.textCell(cell, permissions)  // Default to text menu for empty cells
+    menuItems = MenuItems.textCell(cell, permissions) // Default to text menu for empty cells
   } else {
-    switch(cell.type) {
-      case 'text': menuItems = MenuItems.textCell(cell, permissions); break
-      case 'image': menuItems = MenuItems.imageCell(cell, permissions); break
-      case 'button': menuItems = MenuItems.buttonCell(cell, permissions); break
-      case 'link': menuItems = MenuItems.linkCell(cell, permissions); break
-      default: menuItems = MenuItems.textCell(cell, permissions)
+    switch (cell.type) {
+      case 'text':
+        menuItems = MenuItems.textCell(cell, permissions)
+        break
+      case 'image':
+        menuItems = MenuItems.imageCell(cell, permissions)
+        break
+      case 'button':
+        menuItems = MenuItems.buttonCell(cell, permissions)
+        break
+      case 'link':
+        menuItems = MenuItems.linkCell(cell, permissions)
+        break
+      default:
+        menuItems = MenuItems.textCell(cell, permissions)
     }
   }
-  
+
   showCellContextMenu(e.clientX, e.clientY, menuItems, `Cell ${idx + 1}`)
 }
 
@@ -614,8 +882,8 @@ function handleCellContextMenuAction(action) {
   if (currentRightClickCellIdx.value === null) return
   const idx = currentRightClickCellIdx.value
   const cell = cells.value[idx]
-  
-  switch(action) {
+
+  switch (action) {
     case 'edit-text':
       // Focus the cell text element
       const cellEl = document.querySelector(`.card-cell:nth-child(${idx + 1}) .cell-text`)
@@ -646,7 +914,7 @@ function handleCellContextMenuAction(action) {
       triggerCellImageUpload(idx)
       break
     case 'remove-image':
-      const newCells = cells.value.map((c, i) => i === idx ? { ...c, url: '' } : c)
+      const newCells = cells.value.map((c, i) => (i === idx ? { ...c, url: '' } : c))
       saveCells(newCells)
       break
     case 'fit-cover':
@@ -692,13 +960,13 @@ function handleCellContextMenuAction(action) {
       updateCell({ column: 'right' })
       break
   }
-  
+
   currentRightClickCellIdx.value = null
 }
 
 function updateCell(updates) {
   if (currentRightClickCellIdx.value === null) return
-  const newCells = cells.value.map((c, i) => 
+  const newCells = cells.value.map((c, i) =>
     i === currentRightClickCellIdx.value ? { ...c, ...updates } : c
   )
   saveCells(newCells)
@@ -721,7 +989,7 @@ function onCellTextInput(idx, e) {
   // Auto-adjust height based on content
   const scrollHeight = e.target.scrollHeight
   if (scrollHeight > (cells.value[idx].height || 40)) {
-    const newCells = cells.value.map((c, i) => i === idx ? { ...c, height: scrollHeight } : c)
+    const newCells = cells.value.map((c, i) => (i === idx ? { ...c, height: scrollHeight } : c))
     saveCells(newCells)
   }
 }
@@ -741,7 +1009,7 @@ function saveCellButtonText(idx, e) {
 
 function saveCellUrl(idx, e) {
   const url = e.target.value
-  const newCells = cells.value.map((c, i) => i === idx ? { ...c, url } : c)
+  const newCells = cells.value.map((c, i) => (i === idx ? { ...c, url } : c))
   saveCells(newCells)
 }
 
@@ -755,11 +1023,13 @@ async function handleCellImageUpload(e, idx) {
   const projectId = route.params.projectId
   const ext = file.name.split('.').pop()
   const path = `canvas/${projectId}/cell-${Date.now()}.${ext}`
-  const { error } = await supabase.storage.from('uploads').upload(path, file, { upsert: true, contentType: file.type })
+  const { error } = await supabase.storage
+    .from('uploads')
+    .upload(path, file, { upsert: true, contentType: file.type })
   if (error) return
   const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(path)
   if (urlData?.publicUrl) {
-    const newCells = cells.value.map((c, i) => i === idx ? { ...c, url: urlData.publicUrl } : c)
+    const newCells = cells.value.map((c, i) => (i === idx ? { ...c, url: urlData.publicUrl } : c))
     saveCells(newCells)
   }
 }
@@ -795,7 +1065,7 @@ function onCellDrop(e, targetIdx) {
     // Cell from another card or canvas element
     const canvasElementId = e.dataTransfer.getData('canvas-element-id')
     if (canvasElementId) {
-      const el = elements.elements.find(el => el.id === canvasElementId)
+      const el = elements.elements.find((el) => el.id === canvasElementId)
       if (el) {
         const newCell = canvasElementToCell(el)
         const newCells = [...cells.value]
@@ -827,15 +1097,20 @@ function onCellDragEnd() {
 
 function canvasElementToCell(el) {
   const base = { id: Date.now().toString(), type: el.type }
-  if (el.type === 'text') return { ...base, text: el.content?.text, fontSize: el.font_size, color: el.text_color }
+  if (el.type === 'text')
+    return { ...base, text: el.content?.text, fontSize: el.font_size, color: el.text_color }
   if (el.type === 'image') return { ...base, url: el.content?.url }
-  if (el.type === 'button' || el.type === 'link') return { ...base, text: el.content?.label, url: el.content?.url }
+  if (el.type === 'button' || el.type === 'link')
+    return { ...base, text: el.content?.label, url: el.content?.url }
   return base
 }
 
 // ---- Canvas element drop onto card ----
 function onDragOver(e) {
-  if (e.dataTransfer.types.includes('canvas-element-id') || e.dataTransfer.types.includes('cell-data')) {
+  if (
+    e.dataTransfer.types.includes('canvas-element-id') ||
+    e.dataTransfer.types.includes('cell-data')
+  ) {
     isDragOver.value = true
   }
 }
@@ -848,7 +1123,7 @@ function onDrop(e) {
   isDragOver.value = false
   const canvasElementId = e.dataTransfer.getData('canvas-element-id')
   if (canvasElementId) {
-    const el = elements.elements.find(el => el.id === canvasElementId)
+    const el = elements.elements.find((el) => el.id === canvasElementId)
     if (el) {
       const newCell = canvasElementToCell(el)
       saveCells([...cells.value, newCell])
@@ -871,27 +1146,41 @@ function onResizeStart(e, handle) {
   const onMove = (me) => {
     const dx = (me.clientX - startX) / viewport.zoom
     const dy = (me.clientY - startY) / viewport.zoom
-    let newW = startW, newH = startH, newX = startPX, newY = startPY
+    let newW = startW,
+      newH = startH,
+      newX = startPX,
+      newY = startPY
 
     if (handle.includes('e')) newW = Math.max(150, startW + dx)
     if (handle.includes('s')) newH = Math.max(100, startH + dy)
-    if (handle.includes('w')) { newW = Math.max(150, startW - dx); newX = startPX + (startW - newW) }
-    if (handle.includes('n')) { newH = Math.max(100, startH - dy); newY = startPY + (startH - newH) }
+    if (handle.includes('w')) {
+      newW = Math.max(150, startW - dx)
+      newX = startPX + (startW - newW)
+    }
+    if (handle.includes('n')) {
+      newH = Math.max(100, startH - dy)
+      newY = startPY + (startH - newH)
+    }
 
-    elements.updateElement(props.element.id, { width: newW, height: newH, position_x: newX, position_y: newY })
+    elements.updateElement(props.element.id, {
+      width: newW,
+      height: newH,
+      position_x: newX,
+      position_y: newY
+    })
   }
 
   const onUp = () => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
-    cleanupFns = cleanupFns.filter(fn => fn !== cleanupWrapper)
+    cleanupFns = cleanupFns.filter((fn) => fn !== cleanupWrapper)
   }
 
   const cleanupWrapper = () => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
   }
-  
+
   addCleanup(cleanupWrapper)
   document.addEventListener('mousemove', onMove)
   document.addEventListener('mouseup', onUp)
@@ -905,21 +1194,21 @@ function onCellResizeStart(e, idx) {
 
   const onMove = (me) => {
     const newH = Math.max(30, startH + (me.clientY - startY) / viewport.zoom)
-    const newCells = cells.value.map((c, i) => i === idx ? { ...c, height: newH } : c)
+    const newCells = cells.value.map((c, i) => (i === idx ? { ...c, height: newH } : c))
     saveCells(newCells)
   }
 
   const onUp = () => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
-    cleanupFns = cleanupFns.filter(fn => fn !== cleanupWrapper)
+    cleanupFns = cleanupFns.filter((fn) => fn !== cleanupWrapper)
   }
 
   const cleanupWrapper = () => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
   }
-  
+
   addCleanup(cleanupWrapper)
   document.addEventListener('mousemove', onMove)
   document.addEventListener('mouseup', onUp)
@@ -936,7 +1225,7 @@ function updateCellToolbarPosition(idx) {
     }
     currentCellIdx.value = idx
     currentCellFontSize.value = cells.value[idx].fontSize || 14
-    
+
     // Update format state
     updateCellFormatState()
   }
@@ -949,24 +1238,30 @@ function updateCellFormatState() {
     underline: document.queryCommandState('underline'),
     strikeThrough: document.queryCommandState('strikeThrough')
   }
+  // Track if there's a text selection (for showing font size handle)
+  const selection = window.getSelection()
+  cellFormatStateHasSelection.value = !!(selection && selection.rangeCount > 0 && !selection.isCollapsed)
 }
 
 function toggleCellFormat(command) {
   document.execCommand(command, false, '')
   updateCellFormatState()
-  
+
   // Save the formatted HTML content
   if (currentCellIdx.value !== null) {
-    const cellElement = document.querySelector(`.card-cell:nth-child(${currentCellIdx.value + 1}) .cell-text`)
+    const cellElement = document.querySelector(
+      `.card-cell:nth-child(${currentCellIdx.value + 1}) .cell-text`
+    )
     if (cellElement) {
       const newCells = [...cells.value]
       const currentText = newCells[currentCellIdx.value].text
       const htmlContent = cellElement.innerHTML
-      
-      const updated = (typeof currentText === 'object' && currentText !== null)
-        ? { ...currentText, [i18nStore.currentLocale]: htmlContent }
-        : { pt: htmlContent }
-      
+
+      const updated =
+        typeof currentText === 'object' && currentText !== null
+          ? { ...currentText, [i18nStore.currentLocale]: htmlContent }
+          : { pt: htmlContent }
+
       newCells[currentCellIdx.value] = { ...newCells[currentCellIdx.value], text: updated }
       saveCells(newCells)
     }
@@ -976,16 +1271,56 @@ function toggleCellFormat(command) {
 function increaseCellFontSize() {
   if (currentCellIdx.value !== null) {
     const newSize = Math.min(72, (cells.value[currentCellIdx.value].fontSize || 14) + 1)
-    const newCells = cells.value.map((c, i) => i === currentCellIdx.value ? { ...c, fontSize: newSize } : c)
+    const newCells = cells.value.map((c, i) =>
+      i === currentCellIdx.value ? { ...c, fontSize: newSize } : c
+    )
     saveCells(newCells)
     currentCellFontSize.value = newSize
   }
 }
 
+// Font size drag-to-resize for cell text
+function onCellFontSizeResizeStart(e, idx) {
+  e.preventDefault()
+  e.stopPropagation()
+  
+  const startY = e.clientY
+  const startFontSize = cells.value[idx].fontSize || 14
+  
+  const onMove = (me) => {
+    const deltaY = startY - me.clientY // Drag up increases, down decreases
+    const sensitivity = 0.1
+    let newFontSize = Math.round((startFontSize + deltaY * sensitivity) * 10) / 10
+    newFontSize = Math.max(8, Math.min(72, newFontSize))
+    
+    const newCells = cells.value.map((c, i) =>
+      i === idx ? { ...c, fontSize: newFontSize } : c
+    )
+    saveCells(newCells)
+  }
+  
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+    cleanupFns = cleanupFns.filter(fn => fn !== cleanupWrapper)
+  }
+  
+  const cleanupWrapper = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  
+  addCleanup(cleanupWrapper)
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
+
 function decreaseCellFontSize() {
   if (currentCellIdx.value !== null) {
     const newSize = Math.max(8, (cells.value[currentCellIdx.value].fontSize || 14) - 1)
-    const newCells = cells.value.map((c, i) => i === currentCellIdx.value ? { ...c, fontSize: newSize } : c)
+    const newCells = cells.value.map((c, i) =>
+      i === currentCellIdx.value ? { ...c, fontSize: newSize } : c
+    )
     saveCells(newCells)
     currentCellFontSize.value = newSize
   }
@@ -1024,14 +1359,46 @@ function decreaseCellFontSize() {
   z-index: 10;
   border-radius: 2px;
 }
-.resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
-.resize-handle.n  { top: -5px; left: calc(50% - 5px); cursor: n-resize; }
-.resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
-.resize-handle.e  { top: calc(50% - 5px); right: -5px; cursor: e-resize; }
-.resize-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
-.resize-handle.s  { bottom: -5px; left: calc(50% - 5px); cursor: s-resize; }
-.resize-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
-.resize-handle.w  { top: calc(50% - 5px); left: -5px; cursor: w-resize; }
+.resize-handle.nw {
+  top: -5px;
+  left: -5px;
+  cursor: nw-resize;
+}
+.resize-handle.n {
+  top: -5px;
+  left: calc(50% - 5px);
+  cursor: n-resize;
+}
+.resize-handle.ne {
+  top: -5px;
+  right: -5px;
+  cursor: ne-resize;
+}
+.resize-handle.e {
+  top: calc(50% - 5px);
+  right: -5px;
+  cursor: e-resize;
+}
+.resize-handle.se {
+  bottom: -5px;
+  right: -5px;
+  cursor: se-resize;
+}
+.resize-handle.s {
+  bottom: -5px;
+  left: calc(50% - 5px);
+  cursor: s-resize;
+}
+.resize-handle.sw {
+  bottom: -5px;
+  left: -5px;
+  cursor: sw-resize;
+}
+.resize-handle.w {
+  top: calc(50% - 5px);
+  left: -5px;
+  cursor: w-resize;
+}
 
 /* Card title */
 .card-title {
@@ -1040,7 +1407,7 @@ function decreaseCellFontSize() {
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--paper);
-  border-bottom: 1px solid rgba(106,125,91,0.3);
+  border-bottom: 1px solid rgba(106, 125, 91, 0.3);
   outline: none;
   min-height: 2.5rem;
 }
@@ -1049,7 +1416,9 @@ function decreaseCellFontSize() {
   color: var(--moss-light);
   font-style: italic;
 }
-.card-title:focus { background: rgba(255,255,255,0.03); }
+.card-title:focus {
+  background: rgba(255, 255, 255, 0.03);
+}
 
 /* Cells */
 .card-cells {
@@ -1092,7 +1461,7 @@ function decreaseCellFontSize() {
 
 .card-cell {
   position: relative;
-  border: 1px dashed rgba(106,125,91,0.25);
+  border: 1px dashed rgba(106, 125, 91, 0.25);
   border-radius: 2px;
   min-height: 40px;
   transition: all 0.15s;
@@ -1100,11 +1469,11 @@ function decreaseCellFontSize() {
 }
 
 .card-cell:hover {
-  border-color: rgba(106,125,91,0.5);
+  border-color: rgba(106, 125, 91, 0.5);
 }
 
 .card-cell.drag-over {
-  background: rgba(181,93,58,0.1);
+  background: rgba(181, 93, 58, 0.1);
   border-color: var(--terracotta);
   border-style: solid;
 }
@@ -1129,10 +1498,21 @@ function decreaseCellFontSize() {
   transition: all 0.15s;
   gap: 4px;
 }
-.cell-skeleton:hover { background: rgba(181,93,58,0.05); }
+.cell-skeleton:hover {
+  background: rgba(181, 93, 58, 0.05);
+}
 
-.cell-plus { font-size: 1.4rem; color: var(--moss-light); line-height: 1; }
-.cell-hint { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--moss-light); text-transform: uppercase; }
+.cell-plus {
+  font-size: 1.4rem;
+  color: var(--moss-light);
+  line-height: 1;
+}
+.cell-hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--moss-light);
+  text-transform: uppercase;
+}
 
 /* Cell content */
 .cell-text {
@@ -1142,22 +1522,45 @@ function decreaseCellFontSize() {
   white-space: pre-wrap;
   word-wrap: break-word;
   cursor: text;
+  min-height: 40px;
+  line-height: 1.5;
 }
-.cell-text:focus { background: rgba(255,255,255,0.03); }
+.cell-text:focus {
+  background: rgba(255, 255, 255, 0.03);
+}
+.cell-text b, .cell-text strong {
+  font-weight: bold;
+}
+.cell-text i, .cell-text em {
+  font-style: italic;
+}
+.cell-text u {
+  text-decoration: underline;
+}
+.cell-text s, .cell-text strike {
+  text-decoration: line-through;
+}
 
-.cell-image { display: block; width: 100%; object-fit: cover; border-radius: 2px; }
+.cell-image {
+  display: block;
+  width: 100%;
+  object-fit: cover;
+  border-radius: 2px;
+}
 .cell-image-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 80px;
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--moss-light);
   font-size: 0.75rem;
   cursor: pointer;
   border-radius: 2px;
 }
-.cell-image-placeholder:hover { background: rgba(255,255,255,0.06); }
+.cell-image-placeholder:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
 
 .cell-button-wrapper {
   padding: 0.5rem 0.75rem;
@@ -1175,8 +1578,12 @@ function decreaseCellFontSize() {
   transition: background 0.15s;
   outline: none;
 }
-.cell-button:hover { background: var(--stencil-orange); }
-.cell-button:focus { outline: 1px solid var(--paper); }
+.cell-button:hover {
+  background: var(--stencil-orange);
+}
+.cell-button:focus {
+  outline: 1px solid var(--paper);
+}
 
 .cell-url-input {
   padding: 0 0.75rem 0.5rem;
@@ -1184,8 +1591,8 @@ function decreaseCellFontSize() {
 
 .cell-url-input input {
   width: 100%;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--paper);
   padding: 0.25rem 0.5rem;
   font-family: 'Space Mono', monospace;
@@ -1202,8 +1609,8 @@ function decreaseCellFontSize() {
 
 .cell-link-input {
   width: 100%;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--paper);
   padding: 0.3rem 0.5rem;
   font-family: 'Space Mono', monospace;
@@ -1222,6 +1629,21 @@ function decreaseCellFontSize() {
   white-space: nowrap;
 }
 
+/* Nested card cell */
+.cell-nested-card {
+  padding: 0.5rem;
+  min-height: 150px;
+  position: relative;
+}
+
+.cell-nested-card .canvas-card {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  width: 100% !important;
+  transform: none !important;
+}
+
 /* Cell resize handle */
 .cell-resize-handle {
   position: absolute;
@@ -1233,8 +1655,54 @@ function decreaseCellFontSize() {
   transition: background 0.1s;
   z-index: 5;
 }
-.cell-resize-handle.bottom { bottom: 0; }
-.cell-resize-handle:hover { background: rgba(181,93,58,0.4); }
+.cell-resize-handle.bottom {
+  bottom: 0;
+}
+.cell-resize-handle:hover {
+  background: rgba(181, 93, 58, 0.4);
+}
+
+/* Cell font size resize handle (bottom-right corner) */
+.cell-font-size-handle {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, rgba(181, 93, 58, 0.9) 0%, rgba(181, 93, 58, 0.7) 100%);
+  border: 2px solid var(--paper);
+  border-radius: 4px;
+  cursor: se-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.cell-font-size-handle:hover {
+  background: linear-gradient(135deg, rgba(181, 93, 58, 1) 0%, rgba(181, 93, 58, 0.85) 100%);
+  transform: scale(1.1);
+  box-shadow: 0 3px 12px rgba(181, 93, 58, 0.5);
+}
+.cell-font-size-handle svg {
+  color: var(--paper);
+  opacity: 0.9;
+}
+.cell-font-size-handle .font-size-preview {
+  position: absolute;
+  bottom: -18px;
+  right: 0;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  color: var(--terracotta);
+  background: rgba(20, 20, 18, 0.95);
+  padding: 2px 4px;
+  border-radius: 2px;
+  border: 1px solid rgba(106, 125, 91, 0.4);
+  pointer-events: none;
+  white-space: nowrap;
+}
 
 /* Cell actions */
 .cell-actions {
@@ -1245,10 +1713,12 @@ function decreaseCellFontSize() {
   gap: 2px;
   z-index: 5;
 }
-.card-cell:hover .cell-actions { display: flex; }
+.card-cell:hover .cell-actions {
+  display: flex;
+}
 
 .cell-action-btn {
-  background: rgba(20,20,18,0.95);
+  background: rgba(20, 20, 18, 0.95);
   border: 1px solid var(--moss);
   color: var(--moss-light);
   width: 22px;
@@ -1261,15 +1731,20 @@ function decreaseCellFontSize() {
   transition: all 0.1s;
   border-radius: 2px;
 }
-.cell-action-btn:hover { border-color: var(--terracotta); color: var(--terracotta); }
-.drag-handle { cursor: grab; }
+.cell-action-btn:hover {
+  border-color: var(--terracotta);
+  color: var(--terracotta);
+}
+.drag-handle {
+  cursor: grab;
+}
 
 /* Add cell button */
 .add-cell-btn {
   margin: 0.25rem;
   padding: 0.5rem;
   background: transparent;
-  border: 1px dashed rgba(106,125,91,0.4);
+  border: 1px dashed rgba(106, 125, 91, 0.4);
   color: var(--moss-light);
   font-family: 'Space Mono', monospace;
   font-size: 0.7rem;
@@ -1282,15 +1757,20 @@ function decreaseCellFontSize() {
   justify-content: center;
   gap: 0.5rem;
 }
-.add-cell-btn:hover { border-color: var(--terracotta); color: var(--terracotta); }
-.add-cell-btn .plus { font-size: 1rem; }
+.add-cell-btn:hover {
+  border-color: var(--terracotta);
+  color: var(--terracotta);
+}
+.add-cell-btn .plus {
+  font-size: 1rem;
+}
 
 /* Drop indicator */
 .drop-indicator {
   position: absolute;
   inset: 0;
   border: 2px dashed var(--terracotta);
-  background: rgba(181,93,58,0.08);
+  background: rgba(181, 93, 58, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1302,7 +1782,12 @@ function decreaseCellFontSize() {
   border-radius: 4px;
 }
 
-.hidden-input { position: absolute; opacity: 0; width: 0; height: 0; }
+.hidden-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
 
 /* Cell formatting toolbar */
 .cell-text:focus {
@@ -1321,7 +1806,7 @@ function decreaseCellFontSize() {
   border: 1px solid rgba(106, 125, 91, 0.4);
   padding: 6px 8px;
   border-radius: 8px;
-  box-shadow: 
+  box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
     0 2px 8px rgba(0, 0, 0, 0.3);
   pointer-events: all;
@@ -1424,7 +1909,7 @@ function decreaseCellFontSize() {
   flex-direction: column;
   gap: 4px;
   min-width: 180px;
-  box-shadow: 
+  box-shadow:
     0 16px 48px rgba(0, 0, 0, 0.5),
     0 4px 12px rgba(0, 0, 0, 0.3);
   border-radius: 10px;
@@ -1475,8 +1960,8 @@ function decreaseCellFontSize() {
   flex: 1;
 }
 
-.menu-cancel { 
-  color: var(--moss-light) !important; 
+.menu-cancel {
+  color: var(--moss-light) !important;
   border-top: 1px solid rgba(106, 125, 91, 0.2) !important;
   margin-top: 4px;
   padding-top: 10px !important;
