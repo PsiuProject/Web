@@ -35,7 +35,7 @@
           </button>
         </div>
         <div class="hero-trust">
-          <span>TRUSTED BY CREWS AND TEAMS WORLDWIDE</span>
+          <span>MADE BY CREATIVE RESEARCHERS</span>
         </div>
       </div>
     </section>
@@ -217,16 +217,20 @@ const showAuth = ref(false)
 
 const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost'
 
-function handleLogin() {
+async function handleLogin() {
   if (isDevMode) {
-    auth.loginWithGoogle()
+    await auth.loginWithGoogle()
+    // Redirect to /select after login in dev mode
+    setTimeout(() => {
+      router.push({ name: 'project-select' })
+    }, 100)
   } else {
     showAuth.value = true
   }
 }
 
 function tryDemo() {
-  router.push({ name: 'welcome' })
+  router.push({ name: 'project-select' })
 }
 </script>
 

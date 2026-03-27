@@ -85,8 +85,10 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
+const router = useRouter()
 const auth = useAuthStore()
 const showDropdown = ref(false)
 
@@ -101,6 +103,10 @@ function toggleDropdown() {
 async function handleGoogleLogin() {
   await auth.loginWithGoogle()
   showDropdown.value = false
+  // Redirect to /select after successful login
+  setTimeout(() => {
+    router.push({ name: 'project-select' })
+  }, 100)
 }
 
 function handleLogout() {
