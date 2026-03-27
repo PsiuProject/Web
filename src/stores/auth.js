@@ -18,7 +18,10 @@ export const TEST_PROJECT = {
   id: 'test-project-1',
   owner_id: 'dev-user-123',
   title: { pt: 'Projeto Teste', en: 'Test Project' },
-  description: { pt: 'Projeto de teste para desenvolvimento offline', en: 'Offline development test project' },
+  description: {
+    pt: 'Projeto de teste para desenvolvimento offline',
+    en: 'Offline development test project'
+  },
   status: 'active',
   privacy: 'private',
   size: 'card-md',
@@ -35,9 +38,7 @@ export const TEST_PROJECT = {
     { labelKey: 'meta.budget', value: 'R$ 500k' },
     { labelKey: 'meta.team', value: '8 pessoas' }
   ],
-  links: [
-    { url: 'https://example.com', type: 'website' }
-  ],
+  links: [{ url: 'https://example.com', type: 'website' }],
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString()
 }
@@ -102,12 +103,16 @@ export const useAuthStore = defineStore('auth', {
       this.loading = true
 
       // Get initial session
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session }
+      } = await supabase.auth.getSession()
       this.session = session
       this.user = session?.user || null
 
       // Listen for auth changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const {
+        data: { subscription }
+      } = supabase.auth.onAuthStateChange((_event, session) => {
         this.session = session
         this.user = session?.user || null
         this.loading = false
@@ -130,13 +135,16 @@ export const useAuthStore = defineStore('auth', {
         }
         this.loading = false
         this.error = null
-        
+
         // Store in localStorage for persistence during dev
-        localStorage.setItem('dev-auth', JSON.stringify({
-          user: MOCK_USER,
-          timestamp: Date.now()
-        }))
-        
+        localStorage.setItem(
+          'dev-auth',
+          JSON.stringify({
+            user: MOCK_USER,
+            timestamp: Date.now()
+          })
+        )
+
         return true
       }
 
@@ -153,13 +161,13 @@ export const useAuthStore = defineStore('auth', {
           redirectTo: window.location.origin + (import.meta.env.BASE_URL || '/')
         }
       })
-      
+
       if (error) {
         this.error = error.message
         console.error('[Auth] Google login error:', error.message)
         return false
       }
-      
+
       return true
     },
 
@@ -201,7 +209,7 @@ export const useAuthStore = defineStore('auth', {
     // Restore dev mode auth from localStorage
     restoreDevAuth() {
       if (!this.isDevMode) return false
-      
+
       const stored = localStorage.getItem('dev-auth')
       if (stored) {
         try {

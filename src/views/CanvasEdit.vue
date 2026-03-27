@@ -3,9 +3,9 @@
     <AppHeader mode="edit" />
     <EditorToolbar @connection-mode-change="onConnectionModeChange" />
 
-    <CanvasBase 
-      :interactive="true" 
-      @canvas-click="onCanvasClick" 
+    <CanvasBase
+      :interactive="true"
+      @canvas-click="onCanvasClick"
       @canvas-drop="onCanvasDrop"
       @contextmenu.prevent="onCanvasRightClick"
     >
@@ -29,7 +29,7 @@
         @port-hover="onPortHover"
         @port-leave="onPortLeave"
       />
-      
+
       <!-- Connection lines layer - must be AFTER elements so it's on top -->
       <svg class="connections-layer-svg">
         <g v-for="conn in elements.manualConnections" :key="conn.id">
@@ -62,7 +62,7 @@
     </CanvasBase>
 
     <PropertiesPanel v-if="elements.selectedElement" />
-    
+
     <!-- Connection type picker popup (for LEFT-CLICK config) -->
     <ConnectionTypePicker
       :is-visible="showConnectionPicker"
@@ -72,7 +72,7 @@
       @apply="onConnectionTypeApply"
       @close="onConnectionPickerClose"
     />
-    
+
     <!-- Context menu for RIGHT-CLICK element insertion -->
     <ContextMenu
       v-if="connectionContextMenuVisible"
@@ -84,7 +84,7 @@
       @update:is-visible="connectionContextMenuVisible = $event"
       @action="handleConnectionContextMenuAction"
     />
-    
+
     <!-- Canvas context menu -->
     <ContextMenu
       :is-visible="canvasContextMenuVisible"
@@ -92,7 +92,11 @@
       :y="canvasContextMenuPosition.y"
       :items="canvasContextMenuItems"
       :title="canvasContextMenuTitle"
-      @update:is-visible="(val) => { if (!val) hideCanvasContextMenu() }"
+      @update:is-visible="
+        (val) => {
+          if (!val) hideCanvasContextMenu()
+        }
+      "
       @action="handleCanvasContextMenuAction"
     />
   </div>
@@ -105,6 +109,8 @@ import { useElementsStore } from '../stores/elements'
 import { useViewportStore } from '../stores/viewport'
 import { usePermissionsStore } from '../stores/permissions'
 import { useHistoryStore } from '../stores/history'
+import { useI18nStore } from '../stores/i18n-store'
+import { getErrorMessage } from '../lib/errorMessages'
 import AppHeader from '../components/Layout/AppHeader.vue'
 import CanvasBase from '../components/Canvas/Render/CanvasBase.vue'
 import EditorToolbar from '../components/Canvas/Editor/EditorToolbar.vue'
@@ -124,17 +130,25 @@ const elements = useElementsStore()
 const viewport = useViewportStore()
 const permissions = usePermissionsStore()
 const history = useHistoryStore()
+const i18nStore = useI18nStore()
 
 const componentMap = { card: Card, text: Text, image: ImageEl, link: Link, button: Link }
-function getComponent(type) { return componentMap[type] || Text }
+function getComponent(type) {
+  return componentMap[type] || Text
+}
+
+// Helper to get localized error messages
+function t(key, params = {}) {
+  return getErrorMessage(key.category, key.message, i18nStore.currentLocale, params)
+}
 
 // Connection mode state
 const isConnectionMode = ref(false)
 const isDraggingConnection = ref(false)
-const dragConnectionStart = ref(null)  // { element, side, color }
-const dragConnectionLine = ref(null)   // { x1, y1, x2, y2, color }
-const highlightedPort = ref(null)      // { elementId, side }
-const hoveredElement = ref(null)       // Element currently hovered for connection ports
+const dragConnectionStart = ref(null) // { element, side, color }
+const dragConnectionLine = ref(null) // { x1, y1, x2, y2, color }
+const highlightedPort = ref(null) // { elementId, side }
+const hoveredElement = ref(null) // Element currently hovered for connection ports
 const showConnectionPicker = ref(false)
 const pickerPosition = ref({ x: 0, y: 0 })
 const selectedConnectionType = ref('subProject')
@@ -165,7 +179,7 @@ function hideCanvasContextMenu() {
 }
 
 function handleCanvasContextMenuAction(action) {
-  switch(action) {
+  switch (action) {
     case 'add-text':
       addElementAtMouse('text')
       break
@@ -188,13 +202,16 @@ function handleCanvasContextMenuAction(action) {
       // Center on all elements or reset if empty
       if (elements.elements.length > 0) {
         // Calculate center of all elements
-        const bounds = elements.elements.reduce((acc, el) => ({
-          minX: Math.min(acc.minX, el.position_x),
-          minY: Math.min(acc.minY, el.position_y),
-          maxX: Math.max(acc.maxX, el.position_x + el.width),
-          maxY: Math.max(acc.maxY, el.position_y + el.height)
-        }), { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity })
-        
+        const bounds = elements.elements.reduce(
+          (acc, el) => ({
+            minX: Math.min(acc.minX, el.position_x),
+            minY: Math.min(acc.minY, el.position_y),
+            maxX: Math.max(acc.maxX, el.position_x + el.width),
+            maxY: Math.max(acc.maxY, el.position_y + el.height)
+          }),
+          { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+        )
+
         const centerX = (bounds.minX + bounds.maxX) / 2
         const centerY = (bounds.minY + bounds.maxY) / 2
         viewport.centerOn(centerX, centerY, 0.8)
@@ -204,8 +221,8 @@ function handleCanvasContextMenuAction(action) {
       }
       break
     case 'clear-all':
-      if (confirm('Are you sure you want to clear all elements?')) {
-        elements.elements.forEach(el => {
+      if (confirm(t({ category: 'general', message: 'confirmation.clearAll' }))) {
+        elements.elements.forEach((el) => {
           history.push({ action: 'delete', elementId: el.id, state: { ...el } })
           elements.deleteElement(el.id)
         })
@@ -214,59 +231,70 @@ function handleCanvasContextMenuAction(action) {
   }
 }
 
-function addElementAtMouse(type) {
+async function addElementAtMouse(type) {
   const projectId = route.params.projectId
   const canvasPos = {
     x: (canvasContextMenuPosition.value.x - viewport.translateX) / viewport.zoom,
     y: (canvasContextMenuPosition.value.y - viewport.translateY) / viewport.zoom
   }
-  
-  const defaults = { 
-    text: { w: 200, h: 60 }, 
-    image: { w: 300, h: 200 }, 
-    button: { w: 160, h: 44 }, 
+
+  const defaults = {
+    text: { w: 200, h: 60 },
+    image: { w: 300, h: 200 },
+    button: { w: 160, h: 44 },
     link: { w: 180, h: 44 },
     card: { w: 250, h: 300 }
   }
   const def = defaults[type] || { w: 200, h: 60 }
-  
+
   const placeholderContent = {
-    text: { 
+    text: {
       text: { pt: 'Novo texto', en: 'New text' },
       boxed: false
     },
-    image: { 
-      url: '', 
+    image: {
+      url: '',
       caption: { pt: 'Legenda da imagem', en: 'Image caption' }
     },
-    button: { 
-      url: 'https://', 
+    button: {
+      url: 'https://',
       label: { pt: 'Botão', en: 'Button' },
       color: '#b55d3a'
     },
-    link: { 
-      url: 'https://', 
+    link: {
+      url: 'https://',
       label: { pt: 'Link', en: 'Link' }
     },
-    card: { 
+    card: {
       title: { pt: 'Novo Card', en: 'New Card' },
       description: { pt: '', en: '' },
       status: 'active',
       cells: []
     }
   }
-  
-  elements.createElement(projectId, type, { 
-    x: canvasPos.x - def.w / 2, 
-    y: canvasPos.y - def.h / 2 
-  }, { width: def.w, height: def.h })
-    .then(el => {
-      if (el) {
-        elements.updateElement(el.id, { content: placeholderContent[type] || {} })
-        elements.selectElement(el.id)
-        history.push({ action: 'create', elementId: el.id, state: el })
-      }
-    })
+
+  // Create element with proper async handling to avoid race conditions
+  const el = await elements.createElement(
+    projectId,
+    type,
+    {
+      x: canvasPos.x - def.w / 2,
+      y: canvasPos.y - def.h / 2
+    },
+    { width: def.w, height: def.h }
+  )
+
+  if (el) {
+    try {
+      await elements.updateElement(el.id, { content: placeholderContent[type] || {} })
+      elements.selectElement(el.id)
+      history.push({ action: 'create', elementId: el.id, state: el })
+    } catch (error) {
+      console.error('[CanvasEdit] Failed to update element content:', error)
+      // Rollback: delete the created element if content update fails
+      await elements.deleteElement(el.id)
+    }
+  }
 }
 
 function getConnectionTypeKey(type) {
@@ -274,7 +302,7 @@ function getConnectionTypeKey(type) {
   return `connections.${type}`
 }
 
-function onCanvasClick() { 
+function onCanvasClick() {
   elements.clearSelection()
 }
 
@@ -290,20 +318,22 @@ function onConnectionModeChange(isConnection) {
   }
 }
 
-function onElementClick(element) { elements.selectElement(element.id) }
+function onElementClick(element) {
+  elements.selectElement(element.id)
+}
 function onElementDoubleClick(element) {
   elements.selectElement(element.id)
 }
 
 function onElementHover(element) {
-  if (isConnectionMode) {
+  if (isConnectionMode.value) {
     hoveredElement.value = element
   }
 }
 
 function onElementLeave() {
   hoveredElement.value = null
-  if (!isDraggingConnection) {
+  if (!isDraggingConnection.value) {
     highlightedPort.value = null
   }
 }
@@ -318,24 +348,53 @@ async function onCanvasDrop({ cell, x, y, sourceCardId, sourceCellIdx }) {
   const projectId = route.params.projectId
   const typeMap = { text: 'text', image: 'image', button: 'button', link: 'link' }
   const type = typeMap[cell.type] || 'text'
-  const defaults = { text: { w: 200, h: 60 }, image: { w: 300, h: 200 }, button: { w: 160, h: 44 }, link: { w: 180, h: 44 } }
+  const defaults = {
+    text: { w: 200, h: 60 },
+    image: { w: 300, h: 200 },
+    button: { w: 160, h: 44 },
+    link: { w: 180, h: 44 }
+  }
   const def = defaults[type] || { w: 200, h: 60 }
-  const el = await elements.createElement(projectId, type, { x: x - def.w / 2, y: y - def.h / 2 }, { width: def.w, height: def.h })
-  if (el) {
+
+  try {
+    const el = await elements.createElement(
+      projectId,
+      type,
+      { x: x - def.w / 2, y: y - def.h / 2 },
+      { width: def.w, height: def.h }
+    )
+    if (!el) {
+      console.error('[CanvasEdit] Failed to create element from dropped cell')
+      return
+    }
+
     const content = {}
     if (type === 'text') content.text = cell.text || { pt: '' }
     if (type === 'image') content.url = cell.url || ''
-    if (type === 'button' || type === 'link') { content.label = cell.text || { pt: '' }; content.url = cell.url || '' }
-    await elements.updateElement(el.id, { content, font_size: cell.fontSize, text_color: cell.color })
-    elements.selectElement(el.id)
-  }
-  // Remove cell from source card
-  if (sourceCardId && !isNaN(sourceCellIdx)) {
-    const srcCard = elements.elements.find(e => e.id === sourceCardId)
-    if (srcCard) {
-      const newCells = (srcCard.content?.cells || []).filter((_, i) => i !== sourceCellIdx)
-      await elements.updateElement(sourceCardId, { content: { ...srcCard.content, cells: newCells } })
+    if (type === 'button' || type === 'link') {
+      content.label = cell.text || { pt: '' }
+      content.url = cell.url || ''
     }
+
+    await elements.updateElement(el.id, {
+      content,
+      font_size: cell.fontSize,
+      text_color: cell.color
+    })
+    elements.selectElement(el.id)
+
+    // Remove cell from source card
+    if (sourceCardId && !isNaN(sourceCellIdx)) {
+      const srcCard = elements.elements.find((e) => e.id === sourceCardId)
+      if (srcCard) {
+        const newCells = (srcCard.content?.cells || []).filter((_, i) => i !== sourceCellIdx)
+        await elements.updateElement(sourceCardId, {
+          content: { ...srcCard.content, cells: newCells }
+        })
+      }
+    }
+  } catch (error) {
+    console.error('[CanvasEdit] Error dropping cell:', error)
   }
 }
 
@@ -387,13 +446,26 @@ function onElementDragStart(e, element) {
 }
 
 function onKeyDown(e) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); history.undo() }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) { e.preventDefault(); history.redo() }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); history.redo() }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault()
+    history.undo()
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+    e.preventDefault()
+    history.redo()
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+    e.preventDefault()
+    history.redo()
+  }
   if ((e.key === 'Delete' || e.key === 'Backspace') && elements.selectedId) {
     // Don't delete if editing text
     if (document.activeElement?.contentEditable === 'true') return
-    if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return
+    if (
+      document.activeElement?.tagName === 'INPUT' ||
+      document.activeElement?.tagName === 'TEXTAREA'
+    )
+      return
     // Delete selected connection if one is selected
     if (elements.selectedConnectionId) {
       elements.deleteConnection(elements.selectedConnectionId)
@@ -427,23 +499,34 @@ function onConnectionTypeApply({ type, color }) {
 }
 
 function onConnectionRightClick({ connectionId, x, y }) {
+  console.log('[RIGHT-CLICK] Connection clicked:', connectionId)
   // RIGHT-CLICK: Show context menu to insert element
-  const conn = elements.connections.find(c => c.id === connectionId)
-  if (!conn) return
-  
+  const conn = elements.connections.find((c) => c.id === connectionId)
+  if (!conn) {
+    console.error('[RIGHT-CLICK] Connection not found:', connectionId)
+    return
+  }
+
+  // Use manualConnections for proper coordinates
+  const manualConn = elements.manualConnections.find((c) => c.id === connectionId)
+
   // Store connection data for insertion
-  pendingPortData.value = { 
+  pendingPortData.value = {
     connectionId,
     connection: conn,
-    insertPoint: { 
-      x: (conn.x1 + conn.x2) / 2, 
-      y: (conn.y1 + conn.y2) / 2 
-    }
+    insertPoint: manualConn
+      ? {
+          x: (manualConn.x1 + manualConn.x2) / 2,
+          y: (manualConn.y1 + manualConn.y2) / 2
+        }
+      : { x: 0, y: 0 }
   }
-  
+
+  console.log('[RIGHT-CLICK] Insert point:', pendingPortData.value.insertPoint)
+
   // Set context menu position at mouse
   connectionContextMenuPosition.value = { x, y }
-  
+
   // Create menu items for different element types
   connectionContextMenuItems.value = [
     { label: 'Insert Card', icon: '▦', action: 'insert-card' },
@@ -452,37 +535,75 @@ function onConnectionRightClick({ connectionId, x, y }) {
     { separator: true },
     { label: 'Cancel', icon: '×', action: 'cancel', danger: true }
   ]
-  
+
+  console.log('[RIGHT-CLICK] Opening context menu')
   connectionContextMenuVisible.value = true
 }
 
 function onConnectionClick({ connectionId }) {
+  console.log('[LEFT-CLICK] Connection clicked:', connectionId)
   // LEFT-CLICK: Open connection config picker
-  const conn = elements.connections.find(c => c.id === connectionId)
-  if (!conn) return
-  
+  const conn = elements.connections.find((c) => c.id === connectionId)
+  if (!conn) {
+    console.error(
+      '[LEFT-CLICK] Connection not found:',
+      connectionId,
+      'Available:',
+      elements.connections.map((c) => c.id)
+    )
+    return
+  }
+
+  console.log('[LEFT-CLICK] Found connection:', conn)
   selectedConnectionType.value = conn.connection_type || 'subProject'
   selectedConnectionColor.value = conn.color || '#b55d3a'
   pendingPortData.value = { connectionId }
-  
+
   // Position picker at connection midpoint (in screen coordinates)
-  const midX = (conn.x1 + conn.x2) / 2
-  const midY = (conn.y1 + conn.y2) / 2
-  pickerPosition.value = {
-    x: (midX * viewport.zoom) + viewport.translateX,
-    y: (midY * viewport.zoom) + viewport.translateY
+  // Use manualConnections computed property which has x1, y1, x2, y2
+  const manualConn = elements.manualConnections.find((c) => c.id === connectionId)
+  if (manualConn && manualConn.x1 && manualConn.y1) {
+    const midX = (manualConn.x1 + manualConn.x2) / 2
+    const midY = (manualConn.y1 + manualConn.y2) / 2
+    pickerPosition.value = {
+      x: midX * viewport.zoom + viewport.translateX,
+      y: midY * viewport.zoom + viewport.translateY
+    }
+    console.log('[LEFT-CLICK] Picker positioned at:', pickerPosition.value)
+  } else {
+    // Fallback: use element positions
+    const sourceEl = elements.elements.find((el) => el.id === conn.source_element_id)
+    const targetEl = elements.elements.find((el) => el.id === conn.target_element_id)
+    if (sourceEl && targetEl) {
+      const midX = (sourceEl.position_x + targetEl.position_x) / 2
+      const midY = (sourceEl.position_y + targetEl.position_y) / 2
+      pickerPosition.value = {
+        x: midX * viewport.zoom + viewport.translateX,
+        y: midY * viewport.zoom + viewport.translateY
+      }
+      console.log('[LEFT-CLICK] Fallback picker position:', pickerPosition.value)
+    } else {
+      console.error('[LEFT-CLICK] Cannot calculate picker position')
+      return
+    }
   }
-  
+
+  console.log('[LEFT-CLICK] Opening picker...')
   showConnectionPicker.value = true
+
+  // Debug after next tick
+  setTimeout(() => {
+    console.log('[LEFT-CLICK] After timeout, showConnectionPicker =', showConnectionPicker.value)
+  }, 100)
 }
 
 function handleConnectionContextMenuAction(action) {
   if (!pendingPortData.value?.connection) return
-  
+
   const conn = pendingPortData.value.connection
   const position = pendingPortData.value.insertPoint
-  
-  switch(action) {
+
+  switch (action) {
     case 'insert-card':
       insertElementBetweenConnection(conn, position, 'card')
       break
@@ -496,117 +617,148 @@ function handleConnectionContextMenuAction(action) {
       // Do nothing, just close menu
       break
   }
-  
+
   connectionContextMenuVisible.value = false
   pendingPortData.value = null
 }
 
 function insertElementBetweenConnection(connection, position, elementType = 'card') {
+  console.log('[INSERT] Inserting', elementType, 'at', position, 'for connection', connection.id)
+
   const projectId = route.params.projectId
-  
+
   // Create element at the midpoint
-  const size = elementType === 'card' ? { w: 250, h: 300 } : 
-               elementType === 'text' ? { w: 200, h: 60 } :
-               elementType === 'image' ? { w: 300, h: 200 } :
-               { w: 160, h: 44 }
-  
-  elements.createElement(projectId, elementType, { 
-    x: position.x - (elementType === 'card' ? 125 : size.w / 2), 
-    y: position.y - (elementType === 'card' ? 150 : size.h / 2)
-  }, { width: size.w, height: size.h })
-    .then(newElement => {
-      if (newElement) {
-        // Get the source and target elements from the connection
-        const sourceElement = elements.elements.find(el => el.id === connection.source_element_id)
-        const targetElement = elements.elements.find(el => el.id === connection.target_element_id)
-        
-        if (sourceElement && targetElement) {
-          // Store connection data before deleting
-          const connType = connection.connection_type || 'subProject'
-          const connColor = connection.color || '#b55d3a'
-          
-          // Delete old connection FIRST
-          elements.deleteConnection(connection.id)
-          
-          // Determine appropriate port sides based on relative positions
-          const getSourceSide = (from, to) => {
-            const dx = to.position_x - from.position_x
-            const dy = to.position_y - from.position_y
-            if (Math.abs(dx) > Math.abs(dy)) {
-              return dx > 0 ? 'right' : 'left'
-            } else {
-              return dy > 0 ? 'bottom' : 'top'
-            }
-          }
-          
-          // Wait for element to be fully created
-          setTimeout(() => {
-            try {
-              // Connection from source to new element
-              const sourceSide = getSourceSide(sourceElement, newElement)
-              const newElementSide1 = getOppositeSide(sourceSide)
-              
-              const conn1 = elements.createManualConnection(
-                sourceElement.id,
-                sourceSide,
-                newElement.id,
-                newElementSide1,
-                connType,
-                connColor
-              )
-              
-              // Connection from new element to target
-              const targetSide = getSourceSide(targetElement, newElement)
-              const newElementSide2 = getOppositeSide(targetSide)
-              
-              const conn2 = elements.createManualConnection(
-                newElement.id,
-                newElementSide2,
-                targetElement.id,
-                targetSide,
-                connType,
-                connColor
-              )
-              
-              console.log('Created connections:', conn1?.id, conn2?.id)
-              
-              // Select the new element
-              elements.selectElement(newElement.id)
-            } catch (err) {
-              console.error('Error creating connections:', err)
-              // If failed, restore original connection
-              elements.createConnection({
-                source_element_id: sourceElement.id,
-                target_element_id: targetElement.id,
-                source_side: connection.source_side,
-                target_side: connection.target_side,
-                x1: connection.x1,
-                y1: connection.y1,
-                x2: connection.x2,
-                y2: connection.y2,
-                connection_type: connType,
-                color: connColor
-              })
-            }
-          }, 150)
+  const size =
+    elementType === 'card'
+      ? { w: 250, h: 300 }
+      : elementType === 'text'
+        ? { w: 200, h: 60 }
+        : elementType === 'image'
+          ? { w: 300, h: 200 }
+          : { w: 160, h: 44 }
+
+  elements
+    .createElement(
+      projectId,
+      elementType,
+      {
+        x: position.x - (elementType === 'card' ? 125 : size.w / 2),
+        y: position.y - (elementType === 'card' ? 150 : size.h / 2)
+      },
+      { width: size.w, height: size.h }
+    )
+    .then((newElement) => {
+      if (!newElement) {
+        console.error('[INSERT] Failed to create element')
+        return
+      }
+
+      console.log('[INSERT] Created element:', newElement.id)
+
+      // Get the source and target elements from the connection
+      const sourceElement = elements.elements.find((el) => el.id === connection.source_element_id)
+      const targetElement = elements.elements.find((el) => el.id === connection.target_element_id)
+
+      if (!sourceElement || !targetElement) {
+        console.error('[INSERT] Source or target element not found')
+        return
+      }
+
+      // Store connection data before deleting
+      const connType = connection.connection_type || 'subProject'
+      const connColor = connection.color || '#b55d3a'
+      const connSourceSide = connection.source_side || 'right'
+      const connTargetSide = connection.target_side || 'left'
+
+      console.log('[INSERT] Deleting old connection:', connection.id)
+      // Delete old connection FIRST
+      elements.deleteConnection(connection.id)
+
+      // Determine appropriate port sides based on relative positions
+      const getSourceSide = (from, to) => {
+        const dx = to.position_x - from.position_x
+        const dy = to.position_y - from.position_y
+        if (Math.abs(dx) > Math.abs(dy)) {
+          return dx > 0 ? 'right' : 'left'
+        } else {
+          return dy > 0 ? 'bottom' : 'top'
         }
       }
+
+      // Wait for Vue reactivity and DOM update
+      setTimeout(() => {
+        try {
+          console.log('[INSERT] Creating first connection...')
+          // Connection from source to new element
+          const sourceSide = getSourceSide(sourceElement, newElement)
+          const newElementSide1 = getOppositeSide(sourceSide)
+
+          const conn1 = elements.createManualConnection(
+            sourceElement.id,
+            sourceSide,
+            newElement.id,
+            newElementSide1,
+            connType,
+            connColor
+          )
+          console.log('[INSERT] First connection created:', conn1?.id)
+
+          console.log('[INSERT] Creating second connection...')
+          // Connection from new element to target
+          const targetSide = getSourceSide(targetElement, newElement)
+          const newElementSide2 = getOppositeSide(targetSide)
+
+          const conn2 = elements.createManualConnection(
+            newElement.id,
+            newElementSide2,
+            targetElement.id,
+            targetSide,
+            connType,
+            connColor
+          )
+          console.log('[INSERT] Second connection created:', conn2?.id)
+          console.log('[INSERT] Total connections now:', elements.connections.length)
+
+          // Select the new element
+          elements.selectElement(newElement.id)
+        } catch (err) {
+          console.error('[INSERT] Error creating connections:', err)
+          // Try to restore original connection
+          elements.createConnection({
+            source_element_id: sourceElement.id,
+            target_element_id: targetElement.id,
+            source_side: connSourceSide,
+            target_side: connTargetSide,
+            x1: position.x,
+            y1: position.y,
+            x2: position.x,
+            y2: position.y,
+            connection_type: connType,
+            color: connColor
+          })
+        }
+      }, 200)
     })
 }
 
 function getOppositeSide(side) {
-  switch(side) {
-    case 'top': return 'bottom'
-    case 'bottom': return 'top'
-    case 'left': return 'right'
-    case 'right': return 'left'
-    default: return side
+  switch (side) {
+    case 'top':
+      return 'bottom'
+    case 'bottom':
+      return 'top'
+    case 'left':
+      return 'right'
+    case 'right':
+      return 'left'
+    default:
+      return side
   }
 }
 
 function onConnectionPickerClose() {
   showConnectionPicker.value = false
-  
+
   if (pendingPortData.value?.connectionId) {
     // Update the connection with selected type and color
     elements.updateConnection(pendingPortData.value.connectionId, {
@@ -614,7 +766,7 @@ function onConnectionPickerClose() {
       color: selectedConnectionColor.value
     })
   }
-  
+
   pendingPortData.value = null
 }
 
@@ -626,11 +778,11 @@ function onPortClick({ element, side }) {
     // Same port clicked again - show config
     selectedConnectionType.value = element.connection_type || 'subProject'
     selectedConnectionColor.value = element.color || '#b55d3a'
-    
+
     const portPos = getPortPosition(element, side)
     pickerPosition.value = {
-      x: (portPos.x * viewport.zoom) + viewport.translateX,
-      y: (portPos.y * viewport.zoom) + viewport.translateY
+      x: portPos.x * viewport.zoom + viewport.translateX,
+      y: portPos.y * viewport.zoom + viewport.translateY
     }
     showConnectionPicker.value = true
   }
@@ -641,10 +793,10 @@ function onPortDragStart({ element, side, color }) {
   isDraggingConnection.value = true
   document.body.classList.add('dragging-connection')
   const portPos = getPortPosition(element, side)
-  
+
   // Start from the actual port position
   dragConnectionStart.value = { element, side, color }
-  
+
   dragConnectionLine.value = {
     x1: portPos.x,
     y1: portPos.y,
@@ -669,28 +821,28 @@ function onPortLeave() {
 
 function getPortPosition(element, side) {
   // Port position based on element type and side
-  switch(side) {
-    case 'top': 
-      return { 
-        x: element.position_x + element.width / 2, 
+  switch (side) {
+    case 'top':
+      return {
+        x: element.position_x + element.width / 2,
         y: element.position_y
       }
-    case 'bottom': 
-      return { 
-        x: element.position_x + element.width / 2, 
+    case 'bottom':
+      return {
+        x: element.position_x + element.width / 2,
         y: element.position_y + element.height
       }
-    case 'left': 
-      return { 
-        x: element.position_x, 
-        y: element.position_y + element.height / 2 
+    case 'left':
+      return {
+        x: element.position_x,
+        y: element.position_y + element.height / 2
       }
-    case 'right': 
-      return { 
-        x: element.position_x + element.width, 
-        y: element.position_y + element.height / 2 
+    case 'right':
+      return {
+        x: element.position_x + element.width,
+        y: element.position_y + element.height / 2
       }
-    default: 
+    default:
       return { x: element.position_x + element.width / 2, y: element.position_y }
   }
 }
@@ -698,12 +850,12 @@ function getPortPosition(element, side) {
 // Get available port sides based on element type
 function getElementPortSides(element) {
   const type = element.type
-  
+
   // Text and button/link elements only have top and bottom ports
   if (type === 'text' || type === 'button' || type === 'link') {
     return ['top', 'bottom']
   }
-  
+
   // Image and card elements have all 4 sides
   return ['top', 'right', 'bottom', 'left']
 }
@@ -716,33 +868,39 @@ function onMouseMove(e) {
       x: (e.clientX - viewport.translateX) / viewport.zoom,
       y: (e.clientY - viewport.translateY) / viewport.zoom
     }
-    
-    const startPort = getPortPosition(dragConnectionStart.value.element, dragConnectionStart.value.side)
+
+    const startPort = getPortPosition(
+      dragConnectionStart.value.element,
+      dragConnectionStart.value.side
+    )
     dragConnectionLine.value = {
       ...dragConnectionLine.value,
       x2: canvasPos.x,
       y2: canvasPos.y
     }
-    
+
     // Check for nearby ports with improved magnetic detection
-    // Detection radius scales with zoom for consistent feel
-    const detectionRadius = 50 / viewport.zoom
+    // Use clamped zoom scaling for consistent feel across zoom levels
+    const baseRadius = 50
+    const zoomFactor = Math.log2(viewport.zoom + 1) / Math.log2(2) // Logarithmic scaling
+    const clampedZoomFactor = Math.max(0.5, Math.min(2, zoomFactor)) // Clamp between 0.5x and 2x
+    const detectionRadius = baseRadius / clampedZoomFactor
     let foundPort = null
     let minDistance = Infinity
-    
+
     for (const element of elements.elements) {
       if (element.id === dragConnectionStart.value.element.id) continue
-      
+
       // Determine which sides this element type has ports on
       const availableSides = getElementPortSides(element)
-      
+
       // Check all available sides
       for (const side of availableSides) {
         const portPos = getPortPosition(element, side)
         const dx = canvasPos.x - portPos.x
         const dy = canvasPos.y - portPos.y
         const distance = Math.sqrt(dx * dx + dy * dy)
-        
+
         // Find the closest port within detection radius
         if (distance < detectionRadius && distance < minDistance) {
           minDistance = distance
@@ -750,12 +908,13 @@ function onMouseMove(e) {
         }
       }
     }
-    
+
     // Apply stronger magnetic snap when very close (< 20px)
-    if (minDistance < 20 / viewport.zoom && foundPort) {
+    const snapThreshold = 20 / clampedZoomFactor
+    if (minDistance < snapThreshold && foundPort) {
       // Snap the drag line to the port position
       const snappedPort = getPortPosition(
-        elements.elements.find(el => el.id === foundPort.elementId),
+        elements.elements.find((el) => el.id === foundPort.elementId),
         foundPort.side
       )
       dragConnectionLine.value = {
@@ -764,7 +923,7 @@ function onMouseMove(e) {
         y2: snappedPort.y
       }
     }
-    
+
     highlightedPort.value = foundPort
   }
 }
@@ -773,8 +932,13 @@ function onMouseUp(e) {
   if (isDraggingConnection.value && dragConnectionStart.value) {
     e.preventDefault()
     // Check if dropped on a valid port
-    if (highlightedPort.value && highlightedPort.value.elementId !== dragConnectionStart.value.element.id) {
-      const targetElement = elements.elements.find(el => el.id === highlightedPort.value.elementId)
+    if (
+      highlightedPort.value &&
+      highlightedPort.value.elementId !== dragConnectionStart.value.element.id
+    ) {
+      const targetElement = elements.elements.find(
+        (el) => el.id === highlightedPort.value.elementId
+      )
       if (targetElement) {
         // Create connection
         elements.createConnection({
@@ -787,7 +951,7 @@ function onMouseUp(e) {
         })
       }
     }
-    
+
     // Reset drag state
     isDraggingConnection.value = false
     dragConnectionLine.value = null

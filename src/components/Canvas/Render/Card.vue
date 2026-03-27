@@ -214,13 +214,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18nStore } from '../../../stores/i18n-store'
 import { useElementsStore } from '../../../stores/elements'
 import { useViewportStore } from '../../../stores/viewport'
 import { usePermissionsStore } from '../../../stores/permissions'
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase'
 import { useRoute } from 'vue-router'
+import { sanitizeHTML, getSafeInnerHTML } from '../../../lib/safeHTML'
 import ConnectionPort from './ConnectionPort.vue'
 import ContextMenu from '../../UI/ContextMenu.vue'
 import ConnectionTypePicker from '../Editor/ConnectionTypePicker.vue'
@@ -533,6 +534,18 @@ function syncTitle() {
 }
 
 onMounted(() => syncTitle())
+
+// Cleanup function to prevent memory leaks from event listeners
+let cleanupFns = []
+const addCleanup = (fn) => {
+  if (!cleanupFns.includes(fn)) cleanupFns.push(fn)
+}
+
+onUnmounted(() => {
+  cleanupFns.forEach(fn => fn())
+  cleanupFns = []
+})
+
 watch(cardTitle, () => syncTitle())
 
 function saveCells(newCells) {
@@ -871,8 +884,15 @@ function onResizeStart(e, handle) {
   const onUp = () => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
+    cleanupFns = cleanupFns.filter(fn => fn !== cleanupWrapper)
   }
 
+  const cleanupWrapper = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  
+  addCleanup(cleanupWrapper)
   document.addEventListener('mousemove', onMove)
   document.addEventListener('mouseup', onUp)
 }
@@ -892,8 +912,15 @@ function onCellResizeStart(e, idx) {
   const onUp = () => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
+    cleanupFns = cleanupFns.filter(fn => fn !== cleanupWrapper)
   }
 
+  const cleanupWrapper = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  
+  addCleanup(cleanupWrapper)
   document.addEventListener('mousemove', onMove)
   document.addEventListener('mouseup', onUp)
 }

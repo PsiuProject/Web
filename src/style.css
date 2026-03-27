@@ -621,17 +621,455 @@ footer * { pointer-events: auto; }
   will-change: opacity;
 }
 
-.project-card:active {
-  transform: scale(0.98) !important;
-}
-
-/* Disable transitions during drag for performance */
-body.dragging .project-card {
-  transition: none;
-  will-change: auto;
-  pointer-events: none;
-}
-
 body.dragging #canvas {
   cursor: grabbing;
+}
+
+/* ============================================
+   BROWSER UI THEME - Custom Styling
+   ============================================ */
+
+/* --- Scrollbars (WebKit browsers) --- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(13, 13, 13, 0.5);
+  border-left: 1px solid rgba(62, 76, 51, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--terracotta) 0%, var(--moss) 100%);
+  border-radius: 5px;
+  border: 1px solid rgba(13, 13, 13, 0.8);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--stencil-orange) 0%, var(--moss-light) 100%);
+}
+
+::-webkit-scrollbar-corner {
+  background: rgba(13, 13, 13, 0.5);
+}
+
+/* --- Scrollbars (Firefox) --- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--terracotta) rgba(13, 13, 13, 0.5);
+}
+
+/* --- Number Input Spin Buttons (Chrome, Safari, Edge) --- */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+input[type="number"]:hover::-webkit-outer-spin-button,
+input[type="number"]:hover::-webkit-inner-spin-button {
+  opacity: 0.5;
+}
+
+input[type="number"]:focus::-webkit-outer-spin-button,
+input[type="number"]:focus::-webkit-inner-spin-button {
+  opacity: 1;
+}
+
+/* --- Number Input Spin Buttons (Firefox) --- */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+input[type="number"]:focus {
+  -moz-appearance: none;
+}
+
+/* --- Range Slider (Webkit) --- */
+input[type="range"] {
+  -webkit-appearance: none;
+  background: transparent;
+}
+
+input[type="range"]::-webkit-slider-track {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(62, 76, 51, 0.3);
+  border-radius: 3px;
+  border: 1px solid rgba(62, 76, 51, 0.5);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--terracotta) 0%, var(--stencil-orange) 100%);
+  border: 2px solid var(--paper);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: -5px;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 12px var(--terracotta);
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(0.95);
+}
+
+/* --- Range Slider (Firefox) --- */
+input[type="range"]::-moz-range-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(62, 76, 51, 0.3);
+  border-radius: 3px;
+  border: 1px solid rgba(62, 76, 51, 0.5);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--terracotta) 0%, var(--stencil-orange) 100%);
+  border: 2px solid var(--paper);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 12px var(--terracotta);
+}
+
+input[type="range"]::-moz-range-progress {
+  background: var(--terracotta);
+  height: 6px;
+  border-radius: 3px;
+}
+
+/* --- Color Input --- */
+input[type="color"] {
+  -webkit-appearance: none;
+  border: none;
+  padding: 0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 4px;
+}
+
+input[type="color"]::-webkit-color-swatch {
+  border: 1px solid rgba(62, 76, 51, 0.5);
+  border-radius: 4px;
+}
+
+input[type="color"]::-moz-color-swatch {
+  border: 1px solid rgba(62, 76, 51, 0.5);
+  border-radius: 4px;
+}
+
+/* --- Checkbox --- */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(62, 76, 51, 0.5);
+  border-radius: 3px;
+  background: rgba(13, 13, 13, 0.8);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+}
+
+input[type="checkbox"]:hover {
+  border-color: var(--terracotta);
+  background: rgba(181, 93, 58, 0.1);
+}
+
+input[type="checkbox"]:checked {
+  background: linear-gradient(135deg, var(--terracotta) 0%, var(--stencil-orange) 100%);
+  border-color: var(--terracotta);
+}
+
+input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  color: var(--paper);
+  font-size: 12px;
+  font-weight: bold;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* --- Radio Button --- */
+input[type="radio"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(62, 76, 51, 0.5);
+  border-radius: 50%;
+  background: rgba(13, 13, 13, 0.8);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+}
+
+input[type="radio"]:hover {
+  border-color: var(--terracotta);
+  background: rgba(181, 93, 58, 0.1);
+}
+
+input[type="radio"]:checked {
+  background: linear-gradient(135deg, var(--terracotta) 0%, var(--stencil-orange) 100%);
+  border-color: var(--terracotta);
+}
+
+input[type="radio"]:checked::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--paper);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* --- Select Dropdown --- */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+select::-ms-expand {
+  display: none;
+}
+
+/* --- Text Selection --- */
+::selection {
+  background: var(--terracotta);
+  color: var(--paper);
+}
+
+::-moz-selection {
+  background: var(--terracotta);
+  color: var(--paper);
+}
+
+/* --- Focus Outline --- */
+*:focus-visible {
+  outline: 2px solid var(--stencil-orange);
+  outline-offset: 2px;
+}
+
+/* --- Button Reset with Theme --- */
+button {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--stencil-orange);
+  outline-offset: 2px;
+}
+
+/* --- Input Fields Base Style --- */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="url"],
+textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border: 1px solid rgba(62, 76, 51, 0.4);
+  background: rgba(13, 13, 13, 0.8);
+  color: var(--paper);
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--terracotta);
+  background: rgba(13, 13, 13, 0.95);
+  box-shadow: 0 0 0 3px rgba(181, 93, 58, 0.15);
+}
+
+/* --- File Input --- */
+input[type="file"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+input[type="file"]::file-selector-button {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: linear-gradient(135deg, rgba(181, 93, 58, 0.3) 0%, rgba(181, 93, 58, 0.15) 100%);
+  border: 1px solid var(--terracotta);
+  color: var(--paper);
+  padding: 0.5rem 1rem;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background: linear-gradient(135deg, rgba(181, 93, 58, 0.4) 0%, rgba(181, 93, 58, 0.25) 100%);
+  border-color: var(--stencil-orange);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(181, 93, 58, 0.3);
+}
+
+/* --- Progress Bar --- */
+progress {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border: none;
+  background: rgba(62, 76, 51, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+progress::-webkit-progress-bar {
+  background: rgba(62, 76, 51, 0.3);
+  border-radius: 4px;
+}
+
+progress::-webkit-progress-value {
+  background: linear-gradient(90deg, var(--terracotta) 0%, var(--stencil-orange) 100%);
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+progress::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--terracotta) 0%, var(--stencil-orange) 100%);
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+/* --- Details/Summary --- */
+details > summary {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  list-style: none;
+  cursor: pointer;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+details > summary::before {
+  content: '▶';
+  display: inline-block;
+  margin-right: 0.5rem;
+  color: var(--terracotta);
+  transition: transform 0.2s;
+}
+
+details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+/* --- Tooltip Styling --- */
+[title] {
+  position: relative;
+}
+
+[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(13, 13, 13, 0.95);
+  color: var(--paper);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--moss);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 10000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  animation: tooltipFadeIn 0.2s ease;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* --- Dialog/Modal --- */
+dialog {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: rgba(20, 20, 18, 0.98);
+  border: 1px solid var(--moss);
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  color: var(--paper);
+  padding: 0;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+dialog::backdrop {
+  background: rgba(13, 13, 13, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+dialog:focus-visible {
+  outline: 2px solid var(--stencil-orange);
+  outline-offset: 4px;
 }

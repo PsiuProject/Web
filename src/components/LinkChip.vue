@@ -84,12 +84,26 @@ const displayLabel = computed(() => {
   text-transform: lowercase;
 }
 
-.chip-instagram { border-color: rgba(225, 48, 108, 0.4); }
-.chip-instagram:hover { border-color: #e1306c; color: #e1306c; }
+.chip-instagram {
+  border-color: rgba(225, 48, 108, 0.4);
+}
+.chip-instagram:hover {
+  border-color: #e1306c;
+  color: #e1306c;
+}
 
-.chip-youtube { border-color: rgba(255, 0, 0, 0.3); }
-.chip-youtube:hover { border-color: #ff0000; color: #ff0000; }
+.chip-youtube {
+  border-color: rgba(255, 0, 0, 0.3);
+}
+.chip-youtube:hover {
+  border-color: #ff0000;
+  color: #ff0000;
+}
 
-.chip-github { border-color: rgba(255, 255, 255, 0.3); }
-.chip-github:hover { border-color: #fff; }
+.chip-github {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.chip-github:hover {
+  border-color: #fff;
+}
 </style>

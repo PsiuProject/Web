@@ -4,7 +4,7 @@
     class="comment-bubble"
     :class="{
       'has-comments': hasComments,
-      'resolved': allResolved,
+      resolved: allResolved,
       'can-add': canAdd && !hasComments,
       'viewer-only': viewerOnly && !hasComments
     }"
@@ -49,7 +49,7 @@ const hovered = ref(false)
 
 const threads = computed(() => comments.activeThreadsByElement[props.element.id] || [])
 const hasComments = computed(() => threads.value.length > 0)
-const allResolved = computed(() => hasComments.value && threads.value.every(t => t.resolved))
+const allResolved = computed(() => hasComments.value && threads.value.every((t) => t.resolved))
 const totalCount = computed(() => threads.value.length)
 const canAdd = computed(() => permissions.canComment)
 const viewerOnly = computed(() => permissions.isViewerOnly)
@@ -72,7 +72,7 @@ const bubbleStyle = computed(() => {
     left: `${x}px`,
     top: `${y}px`,
     // Only show if: commenter (always) or viewer with existing comments
-    display: (canAdd.value || hasComments.value) ? 'flex' : 'none'
+    display: canAdd.value || hasComments.value ? 'flex' : 'none'
   }
 })
 
@@ -84,24 +84,26 @@ function onClick() {
 <style scoped>
 .comment-bubble {
   position: absolute;
-  width: 32px;
-  height: 32px;
+  width: clamp(28px, 3.5vw, 32px);
+  height: clamp(28px, 3.5vw, 32px);
   border-radius: 50%;
   background: var(--terracotta);
-  border: 2px solid var(--paper);
+  border: clamp(2px, 0.3vw, 3px) solid var(--paper);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 200;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+  box-shadow: 0 clamp(2px, 0.3vh, 3px) clamp(6px, 1vw, 8px) rgba(0, 0, 0, 0.4);
+  transition:
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s;
   overflow: visible;
 }
 
 .comment-bubble:hover {
   transform: scale(1.15);
-  box-shadow: 0 4px 16px rgba(181,93,58,0.5);
+  box-shadow: 0 clamp(3px, 0.5vh, 4px) clamp(12px, 2vh, 16px) rgba(181, 93, 58, 0.5);
 }
 
 .comment-bubble.has-comments {
@@ -123,8 +125,13 @@ function onClick() {
 }
 
 @keyframes bubbleIdle {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }
 
 .comment-bubble.can-add:hover {
@@ -155,29 +162,29 @@ function onClick() {
 
 .bubble-count {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: clamp(-5px, -0.7vh, -6px);
+  right: clamp(-5px, -0.7vh, -6px);
   background: var(--stencil-orange);
   color: var(--ink);
   font-family: 'Space Mono', monospace;
-  font-size: 0.55rem;
+  font-size: clamp(0.45rem, 0.6vw, 0.55rem);
   font-weight: 700;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
+  min-width: clamp(16px, 2vw, 18px);
+  height: clamp(16px, 2vw, 18px);
+  border-radius: clamp(8px, 1.2vw, 9px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 4px;
-  border: 2px solid var(--ink);
+  padding: 0 clamp(3px, 0.5vw, 4px);
+  border: clamp(2px, 0.3vw, 3px) solid var(--ink);
 }
 
 /* Animated pulse rings for "add comment" state */
 .bubble-ring {
   position: absolute;
-  inset: -4px;
+  inset: clamp(-4px, -0.6vh, -5px);
   border-radius: 50%;
-  border: 2px solid var(--terracotta);
+  border: clamp(2px, 0.3vw, 3px) solid var(--terracotta);
   animation: bubblePulse 2s ease-out infinite;
   pointer-events: none;
 }
@@ -187,7 +194,13 @@ function onClick() {
 }
 
 @keyframes bubblePulse {
-  0% { opacity: 0.7; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.8); }
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.8);
+  }
 }
 </style>

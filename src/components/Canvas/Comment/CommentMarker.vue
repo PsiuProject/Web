@@ -1,5 +1,10 @@
 <template>
-  <div class="comment-marker" :class="{ active: isActive, resolved: comment.resolved }" :style="markerStyle" @click.stop="$emit('click', comment)">
+  <div
+    class="comment-marker"
+    :class="{ active: isActive, resolved: comment.resolved }"
+    :style="markerStyle"
+    @click.stop="$emit('click', comment)"
+  >
     <div class="marker-avatar">
       <img v-if="avatarUrl" :src="avatarUrl" :alt="userName" />
       <span v-else>{{ userInitial }}</span>
@@ -148,7 +153,13 @@ function timeAgo(dateStr) {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

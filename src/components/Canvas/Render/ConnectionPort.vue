@@ -3,8 +3,8 @@
     class="connection-port"
     :class="[
       `port-${side}`,
-      { 
-        'port-active': isActive, 
+      {
+        'port-active': isActive,
         'port-highlight': isHighlighted,
         'port-valid-target': isValidTarget,
         'port-invalid-target': isInvalidTarget
@@ -61,9 +61,9 @@ const emit = defineEmits(['click', 'drag-start', 'hover', 'leave'])
 
 const isHovered = ref(false)
 const isActive = ref(false)
-const dragStartPosition = ref(null)  // Track where mousedown occurred
-const wasDragOperation = ref(false)  // Track if mouse moved enough to be a drag
-const DRAG_THRESHOLD = 5  // Pixels of movement to consider it a drag vs click
+const dragStartPosition = ref(null) // Track where mousedown occurred
+const wasDragOperation = ref(false) // Track if mouse moved enough to be a drag
+const DRAG_THRESHOLD = 5 // Pixels of movement to consider it a drag vs click
 
 const portStyle = computed(() => {
   const baseStyles = {
@@ -104,9 +104,10 @@ const portStyle = computed(() => {
 
 const innerStyle = computed(() => ({
   backgroundColor: props.color,
-  boxShadow: isHovered.value || props.isHighlighted 
-    ? `0 0 8px ${props.color}, 0 0 16px ${props.color}` 
-    : `0 0 4px ${props.color}`
+  boxShadow:
+    isHovered.value || props.isHighlighted
+      ? `0 0 8px ${props.color}, 0 0 16px ${props.color}`
+      : `0 0 4px ${props.color}`
 }))
 
 function onClick(e) {
@@ -126,7 +127,7 @@ function onDragStart(e) {
   console.log('[ConnectionPort] Drag started:', props.side, props.element.id)
   // Store the drag start position
   dragStartPosition.value = { x: e.clientX, y: e.clientY }
-  wasDragOperation.value = false  // Reset until we detect movement
+  wasDragOperation.value = false // Reset until we detect movement
   emit('drag-start', { side: props.side, element: props.element, color: props.color })
 }
 
@@ -155,7 +156,7 @@ function onMouseMove(e) {
     const dx = e.clientX - dragStartPosition.value.x
     const dy = e.clientY - dragStartPosition.value.y
     const distance = Math.sqrt(dx * dx + dy * dy)
-    
+
     // If moved more than threshold, mark as drag operation
     if (distance > DRAG_THRESHOLD) {
       wasDragOperation.value = true
@@ -199,17 +200,22 @@ onUnmounted(() => {
 
 .connection-port.port-valid-target .port-inner {
   background-color: #4ade80 !important;
-  box-shadow: 0 0 8px #4ade80, 0 0 16px #4ade80 !important;
+  box-shadow:
+    0 0 8px #4ade80,
+    0 0 16px #4ade80 !important;
   animation: validPulse 1s ease-in-out infinite;
 }
 
 .connection-port.port-invalid-target .port-inner {
   background-color: #f87171 !important;
-  box-shadow: 0 0 8px #f87171, 0 0 16px #f87171 !important;
+  box-shadow:
+    0 0 8px #f87171,
+    0 0 16px #f87171 !important;
 }
 
 @keyframes portPulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -220,7 +226,8 @@ onUnmounted(() => {
 }
 
 @keyframes validPulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1.2);
   }
   50% {

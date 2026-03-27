@@ -2,8 +2,16 @@ import { defineStore } from 'pinia'
 import { useProjectsStore } from './projectsStore'
 import { useAuthStore } from './auth'
 import { useMembersStore } from './membersStore'
-import { createMainViewportState, createMainViewportGetters, createMainViewportActions } from './viewport/mainViewport'
-import { createProjectViewportState, createProjectViewportGetters, createProjectViewportActions } from './viewport/projectViewport'
+import {
+  createMainViewportState,
+  createMainViewportGetters,
+  createMainViewportActions
+} from './viewport/mainViewport'
+import {
+  createProjectViewportState,
+  createProjectViewportGetters,
+  createProjectViewportActions
+} from './viewport/projectViewport'
 
 export const useGalleryStore = defineStore('gallery', {
   state: () => ({
@@ -45,13 +53,16 @@ export const useGalleryStore = defineStore('gallery', {
       const projectsStore = useProjectsStore()
       const result = projectsStore.galleryProjects
       console.log('[Gallery Store] projects getter called, got:', result.length, 'projects')
-      console.log('[Gallery Store] projects:', result.map(p => ({ 
-        id: p.id, 
-        title: p.titleKey || p.title, 
-        type: p.type,
-        owner_id: p.owner_id,
-        parentId: p.parentId 
-      })))
+      console.log(
+        '[Gallery Store] projects:',
+        result.map((p) => ({
+          id: p.id,
+          title: p.titleKey || p.title,
+          type: p.type,
+          owner_id: p.owner_id,
+          parentId: p.parentId
+        }))
+      )
       return result
     },
 
@@ -59,67 +70,76 @@ export const useGalleryStore = defineStore('gallery', {
       const auth = useAuthStore()
       console.log('[Gallery Store] filteredProjects getter called')
       console.log('[Gallery Store] this.projects count:', this.projects.length)
-      console.log('[Gallery Store] this.projects:', this.projects.map(p => ({ 
-        id: p.id, 
-        title: p.titleKey || p.title, 
-        type: p.type,
-        owner_id: p.owner_id,
-        parentId: p.parentId,
-        privacy: p.privacy 
-      })))
-      
+      console.log(
+        '[Gallery Store] this.projects:',
+        this.projects.map((p) => ({
+          id: p.id,
+          title: p.titleKey || p.title,
+          type: p.type,
+          owner_id: p.owner_id,
+          parentId: p.parentId,
+          privacy: p.privacy
+        }))
+      )
+
       let filtered = this.projects
       console.log('[Gallery Store] Initial filtered:', filtered.length)
 
       if (state.focusedType) {
         console.log('[Gallery Store] Filtering by focusedType:', state.focusedType)
-        filtered = filtered.filter(p => p.type === state.focusedType)
+        filtered = filtered.filter((p) => p.type === state.focusedType)
       }
 
       if (state.activeFilter && state.activeFilter !== 'todos') {
         console.log('[Gallery Store] Filtering by activeFilter:', state.activeFilter)
-        filtered = filtered.filter(p => p.territory === state.activeFilter)
+        filtered = filtered.filter((p) => p.territory === state.activeFilter)
       }
 
       if (state.activeAxisFilter) {
         console.log('[Gallery Store] Filtering by activeAxisFilter:', state.activeAxisFilter)
-        filtered = filtered.filter(p => p.axis && p.axis.includes(state.activeAxisFilter))
+        filtered = filtered.filter((p) => p.axis && p.axis.includes(state.activeAxisFilter))
       }
 
       if (state.activeCategoryFilter) {
-        console.log('[Gallery Store] Filtering by activeCategoryFilter:', state.activeCategoryFilter)
-        filtered = filtered.filter(p => p.category === state.activeCategoryFilter)
+        console.log(
+          '[Gallery Store] Filtering by activeCategoryFilter:',
+          state.activeCategoryFilter
+        )
+        filtered = filtered.filter((p) => p.category === state.activeCategoryFilter)
       }
 
       if (state.activeYearFilter) {
         console.log('[Gallery Store] Filtering by activeYearFilter:', state.activeYearFilter)
-        filtered = filtered.filter(p => p.year === state.activeYearFilter)
+        filtered = filtered.filter((p) => p.year === state.activeYearFilter)
       }
-      
+
       console.log('[Gallery Store] Final filtered count:', filtered.length)
-      console.log('[Gallery Store] Final filtered:', filtered.map(p => ({ id: p.id, title: p.titleKey || p.title, type: p.type })))
+      console.log(
+        '[Gallery Store] Final filtered:',
+        filtered.map((p) => ({ id: p.id, title: p.titleKey || p.title, type: p.type }))
+      )
 
       return filtered
     },
 
     projectConnections(state) {
       const filtered = this.filteredProjects
-      const filteredIds = new Set(filtered.map(p => p.id))
+      const filteredIds = new Set(filtered.map((p) => p.id))
 
       return filtered
-        .filter(p => p.parentId && filteredIds.has(p.parentId))
-        .map(p => ({
+        .filter((p) => p.parentId && filteredIds.has(p.parentId))
+        .map((p) => ({
           id: p.id,
           parentId: p.parentId,
           connectionTypeKey: p.connectionTypeKey,
           childProject: p,
-          parentProject: filtered.find(ep => ep.id === p.parentId)
+          parentProject: filtered.find((ep) => ep.id === p.parentId)
         }))
     },
 
     getConnectionCount(state) {
       return (projectId) => {
-        return this.projects.filter(p => p.parentId === projectId).length
+        return this.projects.filter((p) => p.parentId === projectId).length
       }
     },
 
@@ -168,10 +188,10 @@ export const useGalleryStore = defineStore('gallery', {
         done: { label: 'CONCLUIDOS', top: 0, projects: [], color: '#b55d3a' }
       }
 
-      const rootProjects = filtered.filter(p => !p.parentId)
-      const subProjects = filtered.filter(p => p.parentId)
+      const rootProjects = filtered.filter((p) => !p.parentId)
+      const subProjects = filtered.filter((p) => p.parentId)
 
-      rootProjects.forEach(p => {
+      rootProjects.forEach((p) => {
         if (sections[p.type]) {
           sections[p.type].projects.push(p)
         }
@@ -263,7 +283,7 @@ export const useGalleryStore = defineStore('gallery', {
           maxRowHeight = Math.max(maxRowHeight, cardHeight)
           cardsInRow++
 
-          const children = subProjects.filter(sp => sp.parentId === project.id)
+          const children = subProjects.filter((sp) => sp.parentId === project.id)
           let totalChildrenHeight = 0
 
           if (children.length > 0) {
@@ -291,17 +311,21 @@ export const useGalleryStore = defineStore('gallery', {
               markOccupied(childLeft, childTop, childWidth, childHeight)
 
               rowChildrenHeight = Math.max(rowChildrenHeight, childHeight)
-              totalChildrenHeight = Math.max(totalChildrenHeight, childTop - childStartTop + childHeight)
+              totalChildrenHeight = Math.max(
+                totalChildrenHeight,
+                childTop - childStartTop + childHeight
+              )
               childLeft += childWidth + HORIZONTAL_GAP
             })
           }
 
-          const cardTotalHeight = cardHeight + totalChildrenHeight + (children.length > 0 ? SUB_PROJECT_GAP : 0)
+          const cardTotalHeight =
+            cardHeight + totalChildrenHeight + (children.length > 0 ? SUB_PROJECT_GAP : 0)
           maxRowHeight = Math.max(maxRowHeight, cardTotalHeight)
         })
 
         let maxY = currentSectionTop
-        occupiedRects.forEach(rect => {
+        occupiedRects.forEach((rect) => {
           maxY = Math.max(maxY, rect.bottom)
         })
         currentSectionTop = maxY + SECTION_GAP
@@ -316,14 +340,21 @@ export const useGalleryStore = defineStore('gallery', {
     // Layout only owned projects (for gallery view)
     layoutOwnedProjects() {
       return (ownedProjects) => {
-        console.log('[Gallery Store] layoutOwnedProjects called with:', ownedProjects.length, 'projects')
-        console.log('[Gallery Store] ownedProjects:', ownedProjects.map(p => ({ 
-          id: p.id, 
-          title: p.titleKey || p.title, 
-          type: p.type,
-          parentId: p.parentId 
-        })))
-        
+        console.log(
+          '[Gallery Store] layoutOwnedProjects called with:',
+          ownedProjects.length,
+          'projects'
+        )
+        console.log(
+          '[Gallery Store] ownedProjects:',
+          ownedProjects.map((p) => ({
+            id: p.id,
+            title: p.titleKey || p.title,
+            type: p.type,
+            parentId: p.parentId
+          }))
+        )
+
         const PADDING = 100
         const SECTION_GAP = 350
         const SUB_PROJECT_GAP = 80
@@ -343,12 +374,14 @@ export const useGalleryStore = defineStore('gallery', {
         }
 
         // Only process root projects (no sub-projects in owned view)
-        ownedProjects.filter(p => !p.parentId).forEach(p => {
-          if (sections[p.type]) {
-            sections[p.type].projects.push(p)
-          }
-        })
-        
+        ownedProjects
+          .filter((p) => !p.parentId)
+          .forEach((p) => {
+            if (sections[p.type]) {
+              sections[p.type].projects.push(p)
+            }
+          })
+
         console.log('[Gallery Store] Sections after filtering:', {
           active: sections.active.projects.length,
           pipeline: sections.pipeline.projects.length,
@@ -405,8 +438,14 @@ export const useGalleryStore = defineStore('gallery', {
             console.log('[Gallery Store] Skipping section', type, '- no projects')
             return
           }
-          
-          console.log('[Gallery Store] Processing section', type, 'with', section.projects.length, 'projects')
+
+          console.log(
+            '[Gallery Store] Processing section',
+            type,
+            'with',
+            section.projects.length,
+            'projects'
+          )
 
           section.top = currentSectionTop
 
@@ -446,19 +485,26 @@ export const useGalleryStore = defineStore('gallery', {
           })
 
           let maxY = currentSectionTop
-          occupiedRects.forEach(rect => {
+          occupiedRects.forEach((rect) => {
             maxY = Math.max(maxY, rect.bottom)
           })
           currentSectionTop = maxY + SECTION_GAP
         })
-        
-        console.log('[Gallery Store] layoutOwnedProjects returning:', positionedProjects.length, 'positioned projects')
-        console.log('[Gallery Store] positionedProjects:', positionedProjects.map(p => ({ 
-          id: p.id, 
-          title: p.titleKey || p.title, 
-          type: p.type,
-          computedPosition: p.computedPosition 
-        })))
+
+        console.log(
+          '[Gallery Store] layoutOwnedProjects returning:',
+          positionedProjects.length,
+          'positioned projects'
+        )
+        console.log(
+          '[Gallery Store] positionedProjects:',
+          positionedProjects.map((p) => ({
+            id: p.id,
+            title: p.titleKey || p.title,
+            type: p.type,
+            computedPosition: p.computedPosition
+          }))
+        )
 
         return positionedProjects
       }
@@ -472,7 +518,7 @@ export const useGalleryStore = defineStore('gallery', {
         done: { label: 'CONCLUIDOS', color: '#b55d3a', projects: [] }
       }
 
-      layout.projects.forEach(p => {
+      layout.projects.forEach((p) => {
         if (!p.parentId && sections[p.type]) {
           sections[p.type].projects.push(p)
         }
@@ -566,7 +612,8 @@ export const useGalleryStore = defineStore('gallery', {
       const baseWidth = 240
       const padding = 30
 
-      const resolveText = (v) => typeof v === 'object' && v !== null ? (v.pt || v.en || '') : (v || '')
+      const resolveText = (v) =>
+        typeof v === 'object' && v !== null ? v.pt || v.en || '' : v || ''
       const titleLength = resolveText(project.titleKey || project.title).length || 20
       const descLength = resolveText(project.descriptionKey || project.description).length || 50
       const metaCount = project.meta ? project.meta.length : 0
@@ -579,10 +626,14 @@ export const useGalleryStore = defineStore('gallery', {
       const kpiHeight = hasKpi ? 62 : 0
       const metaHeight = metaCount * 40
       const baseHeight = 170
-      const calculatedHeight = baseHeight + titleHeight + descHeight + kpiHeight + metaHeight + padding
+      const calculatedHeight =
+        baseHeight + titleHeight + descHeight + kpiHeight + metaHeight + padding
       const connectionBonus = Math.min(connectionCount * 15, 60)
 
-      const width = Math.max(210, Math.min(430, baseWidth + Math.floor(descLength / 3) + connectionBonus))
+      const width = Math.max(
+        210,
+        Math.min(430, baseWidth + Math.floor(descLength / 3) + connectionBonus)
+      )
       const height = Math.max(240, Math.min(620, calculatedHeight))
 
       return { width, height }

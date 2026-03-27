@@ -15,7 +15,7 @@ export const useI18nStore = defineStore('i18n', {
     setLocale(locale) {
       this.locale = locale
     },
-    
+
     toggleLocale() {
       this.locale = this.locale === 'pt' ? 'en' : 'pt'
     },

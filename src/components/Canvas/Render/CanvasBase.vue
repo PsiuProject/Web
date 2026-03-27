@@ -1,8 +1,8 @@
 <template>
-  <div 
+  <div
     ref="viewportRef"
     class="canvas-viewport"
-    :class="{ 'dragging': viewport.isDragging, 'zooming': viewport.isZooming }"
+    :class="{ dragging: viewport.isDragging, zooming: viewport.isZooming }"
     @mousedown="onMouseDown"
     @mousemove="onMouseMove"
     @mouseup="onMouseUp"
@@ -14,13 +14,13 @@
     @dragover.prevent
     @drop.prevent="onCanvasDrop"
   >
-    <div 
+    <div
       class="canvas-container"
       :class="{ 'smooth-zoom': viewport.isZooming }"
       :style="{ transform: viewport.canvasTransform }"
     >
       <Grid />
-      
+
       <svg class="connections-layer">
         <ConnectionLine
           v-for="conn in elements.connections"
@@ -57,12 +57,18 @@ const viewportRef = ref(null)
 
 function onMouseDown(e) {
   if (!props.interactive) return
-  if (e.target.closest('.canvas-element') || e.target.closest('.comment-bubble') || e.target.closest('.resize-handle') || e.target.closest('.connection-port')) return
-  
+  if (
+    e.target.closest('.canvas-element') ||
+    e.target.closest('.comment-bubble') ||
+    e.target.closest('.resize-handle') ||
+    e.target.closest('.connection-port')
+  )
+    return
+
   // Don't start viewport drag if in connection dragging mode
   const canvasEdit = document.querySelector('.canvas-edit')
   if (canvasEdit && canvasEdit.classList.contains('dragging-connection')) return
-  
+
   emit('canvas-click')
   viewport.updateMouse(e.clientX, e.clientY)
   viewport.setStart(e.clientX, e.clientY)
@@ -74,7 +80,7 @@ function onMouseMove(e) {
   // Don't pan viewport if in connection dragging mode
   const canvasEdit = document.querySelector('.canvas-edit')
   if (canvasEdit && canvasEdit.classList.contains('dragging-connection')) return
-  
+
   viewport.updateMouse(e.clientX, e.clientY)
   if (viewport.isDragging) {
     viewport.updateTranslate(e.clientX, e.clientY)

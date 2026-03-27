@@ -15,7 +15,10 @@ export const TEST_PROJECTS = [
     id: 'test-project-1',
     owner_id: 'dev-user-123',
     title: { pt: 'Projeto Teste', en: 'Test Project' },
-    description: { pt: 'Projeto de teste para desenvolvimento offline', en: 'Offline development test project' },
+    description: {
+      pt: 'Projeto de teste para desenvolvimento offline',
+      en: 'Offline development test project'
+    },
     status: 'active',
     privacy: 'private',
     size: 'card-md',
@@ -32,9 +35,7 @@ export const TEST_PROJECTS = [
       { labelKey: 'meta.budget', value: 'R$ 500k' },
       { labelKey: 'meta.team', value: '8 pessoas' }
     ],
-    links: [
-      { url: 'https://example.com', type: 'website' }
-    ],
+    links: [{ url: 'https://example.com', type: 'website' }],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   },
@@ -55,9 +56,7 @@ export const TEST_PROJECTS = [
     kpi_label: { pt: 'Progresso', en: 'Progress' },
     kpi_value: '30%',
     kpi_detail: { pt: 'Em andamento', en: 'In progress' },
-    meta: [
-      { labelKey: 'meta.deadline', value: 'Dez 2026' }
-    ],
+    meta: [{ labelKey: 'meta.deadline', value: 'Dez 2026' }],
     links: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
@@ -100,7 +99,10 @@ export const TEST_CANVAS_ELEMENTS = [
     type: 'card',
     content: {
       title: { pt: 'Card Exemplo', en: 'Example Card' },
-      description: { pt: 'Este é um card de exemplo no canvas', en: 'This is an example card on the canvas' },
+      description: {
+        pt: 'Este é um card de exemplo no canvas',
+        en: 'This is an example card on the canvas'
+      },
       status: 'active'
     },
     position_x: 150,
@@ -144,7 +146,10 @@ export const TEST_CANVAS_ELEMENTS = [
     type: 'image',
     content: {
       url: '',
-      caption: { pt: 'Imagem de exemplo (upload para adicionar)', en: 'Example image (upload to add)' }
+      caption: {
+        pt: 'Imagem de exemplo (upload para adicionar)',
+        en: 'Example image (upload to add)'
+      }
     },
     position_x: 500,
     position_y: 250,
@@ -252,6 +257,23 @@ export const TEST_COMMENTS = [
   }
 ]
 
+// Pre-populated connections for test project
+export const TEST_CONNECTIONS = [
+  {
+    id: 'conn-1',
+    project_id: 'test-project-1',
+    source_element_id: 'elem-text-1',
+    target_element_id: 'elem-card-1',
+    source_side: 'bottom',
+    target_side: 'top',
+    connection_type: 'subProject',
+    color: '#b55d3a',
+    created_by: 'dev-user-123',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }
+]
+
 // Helper functions for localStorage management
 export class MockDataStore {
   constructor() {
@@ -263,7 +285,10 @@ export class MockDataStore {
     const data = localStorage.getItem(this.prefix + 'projects')
     const result = data ? JSON.parse(data) : TEST_PROJECTS
     console.log('[MockData] getProjects called, returning:', result.length, 'projects')
-    console.log('[MockData] projects:', result.map(p => ({ id: p.id, title: p.title, owner_id: p.owner_id, status: p.status })))
+    console.log(
+      '[MockData] projects:',
+      result.map((p) => ({ id: p.id, title: p.title, owner_id: p.owner_id, status: p.status }))
+    )
     return result
   }
 
@@ -276,7 +301,7 @@ export class MockDataStore {
   getElements(projectId) {
     const all = localStorage.getItem(this.prefix + 'elements')
     const data = all ? JSON.parse(all) : TEST_CANVAS_ELEMENTS
-    return data.filter(el => el.project_id === projectId)
+    return data.filter((el) => el.project_id === projectId)
   }
 
   saveElements(elements) {
@@ -291,7 +316,7 @@ export class MockDataStore {
 
   updateElement(id, updates) {
     const all = this.getAllElements()
-    const idx = all.findIndex(el => el.id === id)
+    const idx = all.findIndex((el) => el.id === id)
     if (idx >= 0) {
       all[idx] = { ...all[idx], ...updates, updated_at: new Date().toISOString() }
       this.saveElements(all)
@@ -302,7 +327,7 @@ export class MockDataStore {
 
   deleteElement(id) {
     const all = this.getAllElements()
-    const filtered = all.filter(el => el.id !== id)
+    const filtered = all.filter((el) => el.id !== id)
     this.saveElements(filtered)
   }
 
@@ -315,7 +340,7 @@ export class MockDataStore {
   getComments(projectId) {
     const data = localStorage.getItem(this.prefix + 'comments')
     const all = data ? JSON.parse(data) : TEST_COMMENTS
-    return all.filter(c => c.project_id === projectId)
+    return all.filter((c) => c.project_id === projectId)
   }
 
   saveComments(comments) {
@@ -338,7 +363,7 @@ export class MockDataStore {
 
   updateComment(id, updates) {
     const all = this.getAllComments()
-    const idx = all.findIndex(c => c.id === id)
+    const idx = all.findIndex((c) => c.id === id)
     if (idx >= 0) {
       all[idx] = { ...all[idx], ...updates, updated_at: new Date().toISOString() }
       this.saveComments(all)
@@ -349,13 +374,52 @@ export class MockDataStore {
 
   deleteComment(id) {
     const all = this.getAllComments()
-    const filtered = all.filter(c => c.id !== id && c.parent_comment_id !== id)
+    const filtered = all.filter((c) => c.id !== id && c.parent_comment_id !== id)
     this.saveComments(filtered)
   }
 
   getAllComments() {
     const data = localStorage.getItem(this.prefix + 'comments')
     return data ? JSON.parse(data) : TEST_COMMENTS
+  }
+
+  // Connections
+  getConnections(projectId) {
+    const data = localStorage.getItem(this.prefix + 'connections')
+    const all = data ? JSON.parse(data) : TEST_CONNECTIONS
+    return all.filter((c) => c.project_id === projectId)
+  }
+
+  saveConnections(connections) {
+    localStorage.setItem(this.prefix + 'connections', JSON.stringify(connections))
+  }
+
+  addConnection(connection) {
+    const all = this.getAllConnections()
+    all.push(connection)
+    this.saveConnections(all)
+  }
+
+  updateConnection(id, updates) {
+    const all = this.getAllConnections()
+    const idx = all.findIndex((c) => c.id === id)
+    if (idx >= 0) {
+      all[idx] = { ...all[idx], ...updates, updated_at: new Date().toISOString() }
+      this.saveConnections(all)
+      return all[idx]
+    }
+    return null
+  }
+
+  deleteConnection(id) {
+    const all = this.getAllConnections()
+    const filtered = all.filter((c) => c.id !== id)
+    this.saveConnections(filtered)
+  }
+
+  getAllConnections() {
+    const data = localStorage.getItem(this.prefix + 'connections')
+    return data ? JSON.parse(data) : TEST_CONNECTIONS
   }
 
   // Notifications
@@ -376,7 +440,7 @@ export class MockDataStore {
 
   markNotificationRead(id) {
     const all = this.getNotifications()
-    const idx = all.findIndex(n => n.id === id)
+    const idx = all.findIndex((n) => n.id === id)
     if (idx >= 0) {
       all[idx].read = true
       localStorage.setItem(this.prefix + 'notifications', JSON.stringify(all))
@@ -388,6 +452,7 @@ export class MockDataStore {
     localStorage.removeItem(this.prefix + 'projects')
     localStorage.removeItem(this.prefix + 'elements')
     localStorage.removeItem(this.prefix + 'comments')
+    localStorage.removeItem(this.prefix + 'connections')
     localStorage.removeItem(this.prefix + 'notifications')
   }
 
@@ -397,6 +462,7 @@ export class MockDataStore {
     this.saveProjects(TEST_PROJECTS)
     this.saveElements(TEST_CANVAS_ELEMENTS)
     this.saveComments(TEST_COMMENTS)
+    this.saveConnections(TEST_CONNECTIONS)
   }
 }
 

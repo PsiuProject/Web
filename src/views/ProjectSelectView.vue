@@ -1,7 +1,7 @@
 <template>
   <div class="project-select-view">
     <AppHeader mode="gallery" />
-    
+
     <div class="select-container">
       <div class="select-content">
         <h1 class="select-title">SELECT PROJECT</h1>
@@ -59,15 +59,29 @@
         <form @submit.prevent="createProject" class="new-project-form">
           <div class="form-group">
             <label>Title (PT)</label>
-            <input v-model="newProject.title_pt" type="text" required placeholder="Titulo do projeto" />
+            <input
+              v-model="newProject.title_pt"
+              type="text"
+              required
+              placeholder="Titulo do projeto"
+            />
           </div>
           <div class="form-group">
             <label>Title (EN)</label>
-            <input v-model="newProject.title_en" type="text" placeholder="Project title (optional)" />
+            <input
+              v-model="newProject.title_en"
+              type="text"
+              placeholder="Project title (optional)"
+            />
           </div>
           <div class="form-group">
             <label>Description (PT)</label>
-            <textarea v-model="newProject.description_pt" rows="3" required placeholder="Descricao breve"></textarea>
+            <textarea
+              v-model="newProject.description_pt"
+              rows="3"
+              required
+              placeholder="Descricao breve"
+            ></textarea>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -88,7 +102,9 @@
             </div>
           </div>
           <div class="form-actions">
-            <button type="button" class="cancel-btn" @click="showNewProjectModal = false">Cancel</button>
+            <button type="button" class="cancel-btn" @click="showNewProjectModal = false">
+              Cancel
+            </button>
             <button type="submit" class="create-btn" :disabled="creating">
               {{ creating ? 'Creating...' : 'Create Project' }}
             </button>
@@ -116,17 +132,23 @@ const tab = ref('owned')
 const search = ref('')
 const showNewProjectModal = ref(false)
 const creating = ref(false)
-const newProject = ref({ title_pt: '', title_en: '', description_pt: '', status: 'active', privacy: 'private' })
+const newProject = ref({
+  title_pt: '',
+  title_en: '',
+  description_pt: '',
+  status: 'active',
+  privacy: 'private'
+})
 
 const allProjects = computed(() => projects.projects)
-const ownedProjects = computed(() => projects.projects.filter(p => p.owner_id === auth.userId))
+const ownedProjects = computed(() => projects.projects.filter((p) => p.owner_id === auth.userId))
 
 const filteredProjects = computed(() => {
   let list = tab.value === 'owned' ? ownedProjects.value : allProjects.value
 
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
-    list = list.filter(p => {
+    list = list.filter((p) => {
       const title = getTitle(p).toLowerCase()
       const desc = getDescription(p).toLowerCase()
       return title.includes(q) || desc.includes(q)
@@ -162,7 +184,10 @@ async function createProject() {
   creating.value = true
   try {
     const data = {
-      title: { pt: newProject.value.title_pt, ...(newProject.value.title_en ? { en: newProject.value.title_en } : {}) },
+      title: {
+        pt: newProject.value.title_pt,
+        ...(newProject.value.title_en ? { en: newProject.value.title_en } : {})
+      },
       description: { pt: newProject.value.description_pt },
       status: newProject.value.status,
       privacy: newProject.value.privacy,
@@ -175,7 +200,13 @@ async function createProject() {
     }
     const created = await projects.createProject(data)
     if (created) {
-      newProject.value = { title_pt: '', title_en: '', description_pt: '', status: 'active', privacy: 'private' }
+      newProject.value = {
+        title_pt: '',
+        title_en: '',
+        description_pt: '',
+        status: 'active',
+        privacy: 'private'
+      }
       showNewProjectModal.value = false
       router.push({ name: 'canvas-edit', params: { projectId: created.id } })
     }
@@ -325,9 +356,15 @@ onMounted(async () => {
   border-width: 0 40px 40px 0;
 }
 
-.card-status.status-active { border-color: transparent #ff5f1f transparent transparent; }
-.card-status.status-pipeline { border-color: transparent #6a7d5b transparent transparent; }
-.card-status.status-done { border-color: transparent #b55d3a transparent transparent; }
+.card-status.status-active {
+  border-color: transparent #ff5f1f transparent transparent;
+}
+.card-status.status-pipeline {
+  border-color: transparent #6a7d5b transparent transparent;
+}
+.card-status.status-done {
+  border-color: transparent #b55d3a transparent transparent;
+}
 
 .card-content h3 {
   font-size: 1.1rem;

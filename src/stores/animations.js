@@ -39,7 +39,7 @@ export function createAnimationActions() {
       this.projects.forEach((project, i) => {
         this.cardAnimations[project.id] = {
           opacity: '0',
-          transform: 'translateZ(' + (-window.innerWidth * 0.5208) + 'px)'
+          transform: 'translateZ(' + -window.innerWidth * 0.5208 + 'px)'
         }
         setTimeout(() => {
           this.cardAnimations[project.id] = {

@@ -6,11 +6,15 @@
     @click="$emit('click', element)"
     @dblclick="$emit('dblclick', element)"
   >
-    <img v-if="element.content?.url" :src="element.content.url" :alt="displayText(element.content?.caption)" />
+    <img
+      v-if="element.content?.url"
+      :src="element.content.url"
+      :alt="displayText(element.content?.caption)"
+    />
     <div v-if="element.content?.caption" class="image-caption">
       {{ displayText(element.content.caption) }}
     </div>
-    
+
     <!-- Connection ports (visible in connection mode) - ALL 4 SIDES for images -->
     <template v-if="showPorts">
       <ConnectionPort
@@ -19,7 +23,9 @@
         :side="side"
         :element="element"
         :color="portColor"
-        :is-highlighted="highlightedPort?.elementId === element.id && highlightedPort?.side === side"
+        :is-highlighted="
+          highlightedPort?.elementId === element.id && highlightedPort?.side === side
+        "
         @mousedown.stop
         @click="$emit('port-click', { element, side })"
         @drag-start="$emit('port-drag-start', { element, side, color: portColor })"
@@ -58,14 +64,62 @@ const portColor = computed(() => {
   return props.element.color || '#b55d3a'
 })
 
-const imageStyle = computed(() => ({
-  left: `${props.element.position_x}px`,
-  top: `${props.element.position_y}px`,
-  width: `${props.element.width}px`,
-  height: `${props.element.height}px`,
-  transform: `rotate(${props.element.rotation || 0}deg)`,
-  zIndex: props.element.z_index || 0
-}))
+const imageStyle = computed(() => {
+  const el = props.element
+  const style = el.style || {}
+
+  // Build transform string with rotation and scale
+  let transform = `rotate(${el.rotation || 0}deg)`
+  if (style.scaleX && style.scaleX !== 1) {
+    transform = `scaleX(${style.scaleX}) ${transform}`
+  }
+  if (style.scaleY && style.scaleY !== 1) {
+    transform = `scaleY(${style.scaleY}) ${transform}`
+  }
+
+  // Build border radius CSS
+  let borderRadius = '0'
+  if (style.borderRadius) {
+    if (typeof style.borderRadius === 'number') {
+      borderRadius = `${style.borderRadius}px`
+    } else if (typeof style.borderRadius === 'object') {
+      const { topLeft = 0, topRight = 0, bottomRight = 0, bottomLeft = 0 } = style.borderRadius
+      borderRadius = `${topLeft}px ${topRight}px ${bottomRight}px ${bottomLeft}px`
+    } else if (typeof style.borderRadius === 'string') {
+      borderRadius = style.borderRadius
+    }
+  }
+
+  // Build box-shadow CSS
+  let boxShadow = 'none'
+  if (style.shadow) {
+    const { x = 0, y = 4, blur = 8, spread = 0, color = '#000000', opacity = 0.25 } = style.shadow
+    const r = parseInt(color.slice(1, 3), 16)
+    const g = parseInt(color.slice(3, 5), 16)
+    const b = parseInt(color.slice(5, 7), 16)
+    boxShadow = `${x}px ${y}px ${blur}px ${spread}px rgba(${r}, ${g}, ${b}, ${opacity})`
+  }
+
+  // Build border CSS
+  const borderWidth = style.borderWidth || 0
+  const borderColor = style.borderColor || 'var(--moss)'
+  const borderStyle = style.borderStyle || 'solid'
+  const border = borderWidth > 0 ? `${borderWidth}px ${borderStyle} ${borderColor}` : 'none'
+
+  return {
+    left: `${el.position_x}px`,
+    top: `${el.position_y}px`,
+    width: `${el.width}px`,
+    height: `${el.height}px`,
+    transform: transform,
+    zIndex: el.z_index || 0,
+    opacity: style.opacity ?? 1,
+    borderRadius: borderRadius,
+    boxShadow: boxShadow,
+    border: border,
+    objectFit: style.objectFit || 'cover'
+  }
+})
 </script>
 
 <style scoped>

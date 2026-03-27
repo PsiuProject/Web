@@ -17,7 +17,7 @@ const showGrid = computed(() => viewport.showGrid)
   left: -5000px;
   width: 15000px;
   height: 15000px;
-  background-image: 
+  background-image:
     linear-gradient(rgba(106, 125, 91, 0.1) 1px, transparent 1px),
     linear-gradient(90deg, rgba(106, 125, 91, 0.1) 1px, transparent 1px);
   background-size: 50px 50px;

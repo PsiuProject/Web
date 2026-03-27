@@ -1,3 +1,8 @@
+/**
+ * Comments Store
+ * Manages canvas comments, threads, and notifications
+ * Supports both Supabase persistence and offline mock mode
+ */
 import { defineStore } from 'pinia'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { useAuthStore } from './auth'
@@ -13,34 +18,71 @@ export const useCommentsStore = defineStore('comments', {
   }),
 
   getters: {
-    unreadCount: (state) => state.notifications.filter(n => !n.read).length,
-    
+    /** Get count of unread notifications */
+    unreadCount: (state) => state.notifications.filter((n) => !n.read).length,
+
+    /**
+     * Optimized threadsByElement using indexing for O(n) instead of O(n²)
+     * Groups comments by element_id with their replies
+     */
     threadsByElement: (state) => {
       const threads = {}
-      state.comments.forEach(comment => {
+      const repliesMap = {}
+
+      // First pass: group replies by parent_comment_id
+      state.comments.forEach((comment) => {
+        if (comment.parent_comment_id) {
+          if (!repliesMap[comment.parent_comment_id]) {
+            repliesMap[comment.parent_comment_id] = []
+          }
+          repliesMap[comment.parent_comment_id].push(comment)
+        }
+      })
+
+      // Second pass: build threads with pre-grouped replies
+      state.comments.forEach((comment) => {
         if (comment.parent_comment_id) return // skip replies here
         const key = comment.element_id || 'canvas'
-        if (!threads[key]) threads[key] = []
+        if (!threads[key]) {
+          threads[key] = []
+        }
         threads[key].push({
           ...comment,
-          replies: state.comments.filter(c => c.parent_comment_id === comment.id)
+          replies: repliesMap[comment.id] || []
         })
       })
+
       return threads
     },
 
-    // Active (non-deleted) threads per element — used for bubble count
+    // Optimized activeThreadsByElement using indexing
     activeThreadsByElement: (state) => {
       const threads = {}
-      state.comments.forEach(comment => {
+      const repliesMap = {}
+
+      // First pass: group non-deleted replies by parent_comment_id
+      state.comments.forEach((comment) => {
+        if (comment.parent_comment_id && !comment.deleted) {
+          if (!repliesMap[comment.parent_comment_id]) {
+            repliesMap[comment.parent_comment_id] = []
+          }
+          repliesMap[comment.parent_comment_id].push(comment)
+        }
+      })
+
+      // Second pass: build active threads with pre-grouped replies
+      state.comments.forEach((comment) => {
         if (comment.parent_comment_id || comment.deleted) return
         const key = comment.element_id || 'canvas'
-        if (!threads[key]) threads[key] = []
+        if (!threads[key]) {
+          threads[key] = []
+        }
         threads[key].push({
           ...comment,
-          replies: state.comments.filter(c => c.parent_comment_id === comment.id)
+          replies: repliesMap[comment.id] || []
         })
       })
+
       return threads
     },
 
@@ -53,7 +95,7 @@ export const useCommentsStore = defineStore('comments', {
   actions: {
     async loadComments(projectId) {
       this.currentProjectId = projectId
-      
+
       // Use mock data in dev mode
       if (this.isOfflineDev) {
         this.loading = false
@@ -63,25 +105,27 @@ export const useCommentsStore = defineStore('comments', {
       }
 
       if (!isSupabaseConfigured) return
-      
+
       this.loading = true
       try {
         const { data, error } = await supabase
           .from('canvas_comments')
-          .select(`
+          .select(
+            `
             *,
             user:user_id (
               id,
               email,
               raw_user_meta_data
             )
-          `)
+          `
+          )
           .eq('project_id', projectId)
           .order('created_at', { ascending: true })
 
         if (error) throw error
         this.comments = data || []
-        
+
         // Load notifications
         await this.loadNotifications()
       } catch (err) {
@@ -106,14 +150,16 @@ export const useCommentsStore = defineStore('comments', {
       try {
         const { data, error } = await supabase
           .from('comment_notifications')
-          .select(`
+          .select(
+            `
             *,
             comment:comment_id (
               id,
               content,
               project_id
             )
-          `)
+          `
+          )
           .eq('user_id', auth.userId)
           .order('created_at', { ascending: false })
           .limit(50)
@@ -125,7 +171,14 @@ export const useCommentsStore = defineStore('comments', {
       }
     },
 
-    async addComment(projectId, content, elementId = null, parentCommentId = null, attachment = null, replyToId = null) {
+    async addComment(
+      projectId,
+      content,
+      elementId = null,
+      parentCommentId = null,
+      attachment = null,
+      replyToId = null
+    ) {
       const auth = useAuthStore()
       const comment = {
         project_id: projectId,
@@ -142,7 +195,7 @@ export const useCommentsStore = defineStore('comments', {
       if (this.isOfflineDev) {
         const newComment = mockStore.addComment(comment)
         this.comments.push(newComment)
-        
+
         // Create notification for reply
         if (parentCommentId) {
           mockStore.addNotification({
@@ -153,7 +206,7 @@ export const useCommentsStore = defineStore('comments', {
             read: false
           })
         }
-        
+
         return newComment
       }
 
@@ -163,14 +216,16 @@ export const useCommentsStore = defineStore('comments', {
         const { data, error } = await supabase
           .from('canvas_comments')
           .insert(comment)
-          .select(`
+          .select(
+            `
             *,
             user:user_id (
               id,
               email,
               raw_user_meta_data
             )
-          `)
+          `
+          )
           .single()
 
         if (error) throw error
@@ -186,7 +241,7 @@ export const useCommentsStore = defineStore('comments', {
       // Use mock data in dev mode
       if (this.isOfflineDev) {
         mockStore.updateComment(id, { resolved: true })
-        const comment = this.comments.find(c => c.id === id)
+        const comment = this.comments.find((c) => c.id === id)
         if (comment) comment.resolved = true
         return
       }
@@ -201,7 +256,7 @@ export const useCommentsStore = defineStore('comments', {
 
         if (error) throw error
 
-        const comment = this.comments.find(c => c.id === id)
+        const comment = this.comments.find((c) => c.id === id)
         if (comment) comment.resolved = true
       } catch (err) {
         console.error('[Comments] Resolve failed:', err.message)
@@ -212,7 +267,7 @@ export const useCommentsStore = defineStore('comments', {
       // Use mock data in dev mode
       if (this.isOfflineDev) {
         mockStore.deleteComment(id)
-        this.comments = this.comments.filter(c => c.id !== id && c.parent_comment_id !== id)
+        this.comments = this.comments.filter((c) => c.id !== id && c.parent_comment_id !== id)
         return
       }
 
@@ -227,7 +282,7 @@ export const useCommentsStore = defineStore('comments', {
 
         if (error) throw error
 
-        const comment = this.comments.find(c => c.id === id)
+        const comment = this.comments.find((c) => c.id === id)
         if (comment) comment.deleted = true
       } catch (err) {
         console.error('[Comments] Delete failed:', err.message)
@@ -238,7 +293,7 @@ export const useCommentsStore = defineStore('comments', {
       // Use mock data in dev mode
       if (this.isOfflineDev) {
         mockStore.markNotificationRead(notificationId)
-        const notif = this.notifications.find(n => n.id === notificationId)
+        const notif = this.notifications.find((n) => n.id === notificationId)
         if (notif) notif.read = true
         return
       }
@@ -253,7 +308,7 @@ export const useCommentsStore = defineStore('comments', {
 
         if (error) throw error
 
-        const notif = this.notifications.find(n => n.id === notificationId)
+        const notif = this.notifications.find((n) => n.id === notificationId)
         if (notif) notif.read = true
       } catch (err) {
         console.error('[Comments] Mark read failed:', err.message)
@@ -268,23 +323,27 @@ export const useCommentsStore = defineStore('comments', {
 
       this.channel = supabase
         .channel(`canvas-comments-${projectId}`)
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'canvas_comments',
-          filter: `project_id=eq.${projectId}`
-        }, (payload) => {
-          const { eventType, new: newRecord, old: oldRecord } = payload
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'canvas_comments',
+            filter: `project_id=eq.${projectId}`
+          },
+          (payload) => {
+            const { eventType, new: newRecord, old: oldRecord } = payload
 
-          if (eventType === 'INSERT') {
-            this.comments.push(newRecord)
-          } else if (eventType === 'UPDATE') {
-            const idx = this.comments.findIndex(c => c.id === newRecord.id)
-            if (idx >= 0) this.comments[idx] = newRecord
-          } else if (eventType === 'DELETE') {
-            this.comments = this.comments.filter(c => c.id !== oldRecord.id)
+            if (eventType === 'INSERT') {
+              this.comments.push(newRecord)
+            } else if (eventType === 'UPDATE') {
+              const idx = this.comments.findIndex((c) => c.id === newRecord.id)
+              if (idx >= 0) this.comments[idx] = newRecord
+            } else if (eventType === 'DELETE') {
+              this.comments = this.comments.filter((c) => c.id !== oldRecord.id)
+            }
           }
-        })
+        )
         .subscribe()
     },
 

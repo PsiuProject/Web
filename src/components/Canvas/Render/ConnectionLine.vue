@@ -1,5 +1,5 @@
 <template>
-  <g 
+  <g
     class="connection-group"
     @mouseenter="isHovered = true"
     @mouseleave="isHovered = false"
@@ -12,11 +12,11 @@
       stroke="transparent"
       stroke-width="60"
       fill="none"
-      style="cursor: pointer;"
+      style="cursor: pointer"
       @click.stop="onClick"
       @contextmenu.stop
     />
-    
+
     <!-- Main flat modern dotted line - always animated -->
     <path
       :d="pathData"
@@ -27,25 +27,17 @@
       :stroke-dasharray="dotPattern"
       class="connection-line-dotted connection-line-animated"
     />
-    
+
     <!-- Connection dots at endpoints (subtle) -->
-    <circle
-      :cx="x1"
-      :cy="y1"
-      r="5"
-      :fill="lineColor"
-      class="connection-dot"
-    />
-    <circle
-      :cx="x2"
-      :cy="y2"
-      r="5"
-      :fill="lineColor"
-      class="connection-dot"
-    />
-    
+    <circle :cx="x1" :cy="y1" r="5" :fill="lineColor" class="connection-dot" />
+    <circle :cx="x2" :cy="y2" r="5" :fill="lineColor" class="connection-dot" />
+
     <!-- Tooltip at mouse position -->
-    <g v-if="isHovered && connectionTypeKey" class="connection-tooltip" :transform="tooltipTransform">
+    <g
+      v-if="isHovered && connectionTypeKey"
+      class="connection-tooltip"
+      :transform="tooltipTransform"
+    >
       <rect
         x="-80"
         y="-18"
@@ -63,7 +55,7 @@
         fill="#e2ded0"
         font-size="14"
         font-family="'Space Mono', monospace"
-        style="pointer-events: none; letter-spacing: 0.04em; font-weight: 700;"
+        style="pointer-events: none; letter-spacing: 0.04em; font-weight: 700"
       >
         {{ connectionLabel }}
       </text>
@@ -129,16 +121,16 @@ const pathData = computed(() => {
   const dx = props.x2 - props.x1
   const dy = props.y2 - props.y1
   const distance = Math.sqrt(dx * dx + dy * dy)
-  
+
   // Simpler, flatter curve
   const controlOffset = Math.min(50, distance * 0.2)
-  
+
   // Cubic bezier for smooth S-curve
-  const cx1 = props.x1 + (dx * 0.5)
+  const cx1 = props.x1 + dx * 0.5
   const cy1 = props.y1
-  const cx2 = props.x1 + (dx * 0.5)
+  const cx2 = props.x1 + dx * 0.5
   const cy2 = props.y2
-  
+
   return `M ${props.x1} ${props.y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${props.x2} ${props.y2}`
 })
 
@@ -204,7 +196,9 @@ function onClick(e) {
 }
 
 .connection-line-dotted {
-  transition: stroke-width 0.2s ease, opacity 0.2s ease;
+  transition:
+    stroke-width 0.2s ease,
+    opacity 0.2s ease;
   stroke-linecap: round;
   stroke-linejoin: round;
   opacity: 0.8;
@@ -244,11 +238,11 @@ function onClick(e) {
 @keyframes tooltipFadeIn {
   from {
     opacity: 0;
-    transform: translateY(5px);
+    transform: translateY(clamp(4px, 0.6vh, 5px));
   }
   to {
     opacity: 1;
-    transform: translateY(-45px);
+    transform: translateY(clamp(-40px, -5vh, -45px));
   }
 }
 </style>

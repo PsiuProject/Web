@@ -1,9 +1,5 @@
 <template>
-  <div
-    v-if="isEditing"
-    class="inline-editor-overlay"
-    @click.self="save"
-  >
+  <div v-if="isEditing" class="inline-editor-overlay" @click.self="save">
     <div class="inline-editor" :style="editorStyle">
       <textarea
         ref="inputRef"
@@ -49,15 +45,18 @@ function getTextValue(content, field) {
   return val
 }
 
-watch(() => props.isEditing, (val) => {
-  if (val && props.element) {
-    editValue.value = getTextValue(props.element.content, props.field)
-    nextTick(() => {
-      inputRef.value?.focus()
-      inputRef.value?.select()
-    })
+watch(
+  () => props.isEditing,
+  (val) => {
+    if (val && props.element) {
+      editValue.value = getTextValue(props.element.content, props.field)
+      nextTick(() => {
+        inputRef.value?.focus()
+        inputRef.value?.select()
+      })
+    }
   }
-})
+)
 
 const editorStyle = computed(() => {
   if (!props.element) return {}
@@ -102,13 +101,13 @@ function cancel() {
 
 .inline-editor {
   background: rgba(20, 20, 18, 0.98);
-  border: 2px solid var(--terracotta);
-  padding: 1rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  border: clamp(2px, 0.3vw, 3px) solid var(--terracotta);
+  padding: clamp(0.8rem, 1.2vh, 1rem);
+  box-shadow: 0 clamp(6px, 1vh, 8px) clamp(24px, 4vh, 32px) rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  max-width: 600px;
+  gap: clamp(0.6rem, 0.8vh, 0.75rem);
+  max-width: clamp(500px, 70vw, 600px);
   width: 90vw;
 }
 
@@ -116,12 +115,12 @@ function cancel() {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--moss);
   color: var(--paper);
-  padding: 0.75rem;
+  padding: clamp(0.6rem, 0.8vh, 0.75rem);
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: clamp(0.85rem, 1vw, 0.95rem);
   line-height: 1.6;
   resize: vertical;
-  min-height: 100px;
+  min-height: clamp(80px, 12vh, 100px);
   width: 100%;
 }
 
@@ -140,9 +139,9 @@ function cancel() {
   background: var(--terracotta);
   border: none;
   color: var(--ink);
-  padding: 0.4rem 1rem;
+  padding: clamp(0.35rem, 0.5vh, 0.4rem) clamp(0.8rem, 1.2vw, 1rem);
   font-family: 'Space Mono', monospace;
-  font-size: 0.75rem;
+  font-size: clamp(0.65rem, 0.8vw, 0.75rem);
   font-weight: bold;
   cursor: pointer;
   text-transform: uppercase;
@@ -156,9 +155,9 @@ function cancel() {
   background: transparent;
   border: 1px solid var(--moss);
   color: var(--paper);
-  padding: 0.4rem 1rem;
+  padding: clamp(0.35rem, 0.5vh, 0.4rem) clamp(0.8rem, 1.2vw, 1rem);
   font-family: 'Space Mono', monospace;
-  font-size: 0.75rem;
+  font-size: clamp(0.65rem, 0.8vw, 0.75rem);
   cursor: pointer;
   text-transform: uppercase;
 }
@@ -169,7 +168,7 @@ function cancel() {
 
 .hint {
   font-family: 'Space Mono', monospace;
-  font-size: 0.6rem;
+  font-size: clamp(0.5rem, 0.65vw, 0.6rem);
   color: var(--moss-light);
   margin-left: auto;
 }

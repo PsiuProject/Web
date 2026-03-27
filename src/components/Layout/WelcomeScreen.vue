@@ -1,11 +1,17 @@
 <template>
   <div class="welcome-screen">
     <div class="welcome-content">
-      <h1 class="welcome-title">EARTH<br>GUARDIANS<span>.SUR</span></h1>
+      <h1 class="welcome-title">
+        EARTH
+        <br />
+        GUARDIANS
+        <span>.SUR</span>
+      </h1>
       <p class="welcome-subtitle">Canvas colaborativo para projetos ambientais</p>
 
       <div v-if="isDevMode" class="dev-mode-badge">
-        <span class="dev-icon">&#9881;</span> DEV MODE
+        <span class="dev-icon">&#9881;</span>
+        DEV MODE
       </div>
 
       <div class="welcome-actions">
@@ -14,12 +20,11 @@
         </button>
         <p class="welcome-note">
           <template v-if="isDevMode">
-            Click to start testing with mock data offline.<br>
+            Click to start testing with mock data offline.
+            <br />
             Select a project from the gallery to edit/comment.
           </template>
-          <template v-else>
-            Acesse com Google para ver e editar seus projetos.
-          </template>
+          <template v-else>Acesse com Google para ver e editar seus projetos.</template>
         </p>
       </div>
     </div>
@@ -27,11 +32,26 @@
     <div v-if="isDevMode" class="dev-features">
       <h3>Available for Testing:</h3>
       <ul>
-        <li><span class="check">&#10003;</span> View mode</li>
-        <li><span class="check">&#10003;</span> Edit mode (add/edit elements)</li>
-        <li><span class="check">&#10003;</span> Comment mode</li>
-        <li><span class="check">&#10003;</span> Undo/Redo</li>
-        <li><span class="check">&#10003;</span> Zoom/Pan with momentum</li>
+        <li>
+          <span class="check">&#10003;</span>
+          View mode
+        </li>
+        <li>
+          <span class="check">&#10003;</span>
+          Edit mode (add/edit elements)
+        </li>
+        <li>
+          <span class="check">&#10003;</span>
+          Comment mode
+        </li>
+        <li>
+          <span class="check">&#10003;</span>
+          Undo/Redo
+        </li>
+        <li>
+          <span class="check">&#10003;</span>
+          Zoom/Pan with momentum
+        </li>
       </ul>
     </div>
 
@@ -132,7 +152,9 @@ async function handleLogin() {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .welcome-actions {

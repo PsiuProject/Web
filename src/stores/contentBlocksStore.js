@@ -4,7 +4,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 export const useContentBlocksStore = defineStore('contentBlocks', {
   state: () => ({
-    blocks: {},  // keyed by project_id
+    blocks: {}, // keyed by project_id
     loading: false,
     error: null,
     realtimeChannel: null
@@ -20,7 +20,7 @@ export const useContentBlocksStore = defineStore('contentBlocks', {
   actions: {
     async loadBlocks(projectId) {
       if (!isSupabaseConfigured) return
-      
+
       this.loading = true
       const { data, error } = await supabase
         .from('project_content_blocks')
@@ -42,16 +42,23 @@ export const useContentBlocksStore = defineStore('contentBlocks', {
 
       const existingBlocks = this.blocks[projectId] || []
       const position = existingBlocks.length
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user }
+      } = await supabase.auth.getUser()
 
       // Wrap text content as JSONB {pt: ...} — translation fills other langs later
-      const contentValue = (type !== 'link' && content)
-        ? { pt: content }
-        : content
+      const contentValue = type !== 'link' && content ? { pt: content } : content
 
       const { data, error } = await supabase
         .from('project_content_blocks')
-        .insert({ project_id: projectId, type, content: contentValue, url, position, created_by: user?.id })
+        .insert({
+          project_id: projectId,
+          type,
+          content: contentValue,
+          url,
+          position,
+          created_by: user?.id
+        })
         .select()
         .single()
 
@@ -68,7 +75,7 @@ export const useContentBlocksStore = defineStore('contentBlocks', {
 
     async updateBlock(blockId, projectId, updates) {
       if (!isSupabaseConfigured) return null
-      
+
       const { data, error } = await supabase
         .from('project_content_blocks')
         .update(updates)
@@ -82,7 +89,7 @@ export const useContentBlocksStore = defineStore('contentBlocks', {
       }
 
       const blocks = this.blocks[projectId] || []
-      const idx = blocks.findIndex(b => b.id === blockId)
+      const idx = blocks.findIndex((b) => b.id === blockId)
       if (idx >= 0) {
         blocks[idx] = data
       }
@@ -91,35 +98,33 @@ export const useContentBlocksStore = defineStore('contentBlocks', {
 
     async deleteBlock(blockId, projectId) {
       if (!isSupabaseConfigured) return false
-      
-      const { error } = await supabase
-        .from('project_content_blocks')
-        .delete()
-        .eq('id', blockId)
+
+      const { error } = await supabase.from('project_content_blocks').delete().eq('id', blockId)
 
       if (error) {
         this.error = error.message
         return false
       }
 
-      this.blocks[projectId] = (this.blocks[projectId] || [])
-        .filter(b => b.id !== blockId)
+      this.blocks[projectId] = (this.blocks[projectId] || []).filter((b) => b.id !== blockId)
       return true
     },
 
     async reorderBlocks(projectId, orderedIds) {
       if (!isSupabaseConfigured || !supabase) return
-      
+
       const updates = orderedIds.map((id, idx) => ({ id, position: idx }))
 
       // Use Promise.all for parallel execution with error handling
-      const results = await Promise.all(updates.map(u =>
-        supabase.from('project_content_blocks').update({ position: u.position }).eq('id', u.id)
-      ))
+      const results = await Promise.all(
+        updates.map((u) =>
+          supabase.from('project_content_blocks').update({ position: u.position }).eq('id', u.id)
+        )
+      )
 
       // Check for errors and reload from DB on failure
-      if (results.some(r => r.error)) {
-        console.error('[ContentBlocks] Reorder failed:', results.find(r => r.error)?.error)
+      if (results.some((r) => r.error)) {
+        console.error('[ContentBlocks] Reorder failed:', results.find((r) => r.error)?.error)
         await this.loadBlocks(projectId)
         return
       }
@@ -127,7 +132,7 @@ export const useContentBlocksStore = defineStore('contentBlocks', {
       // Reorder local state only after successful update
       const blocks = this.blocks[projectId] || []
       this.blocks[projectId] = orderedIds
-        .map(id => blocks.find(b => b.id === id))
+        .map((id) => blocks.find((b) => b.id === id))
         .filter(Boolean)
     },
 
@@ -139,7 +144,8 @@ export const useContentBlocksStore = defineStore('contentBlocks', {
 
       this.realtimeChannel = supabase
         .channel(`blocks-${projectId}`)
-        .on('postgres_changes',
+        .on(
+          'postgres_changes',
           {
             event: '*',
             schema: 'public',
@@ -151,13 +157,13 @@ export const useContentBlocksStore = defineStore('contentBlocks', {
             if (!this.blocks[projectId]) this.blocks[projectId] = []
 
             if (eventType === 'INSERT') {
-              const exists = this.blocks[projectId].find(b => b.id === newRecord.id)
+              const exists = this.blocks[projectId].find((b) => b.id === newRecord.id)
               if (!exists) this.blocks[projectId].push(newRecord)
             } else if (eventType === 'UPDATE') {
-              const idx = this.blocks[projectId].findIndex(b => b.id === newRecord.id)
+              const idx = this.blocks[projectId].findIndex((b) => b.id === newRecord.id)
               if (idx >= 0) this.blocks[projectId][idx] = newRecord
             } else if (eventType === 'DELETE') {
-              this.blocks[projectId] = this.blocks[projectId].filter(b => b.id !== oldRecord.id)
+              this.blocks[projectId] = this.blocks[projectId].filter((b) => b.id !== oldRecord.id)
             }
           }
         )

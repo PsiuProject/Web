@@ -1,9 +1,7 @@
 <template>
   <div class="canvas-present">
-    <button class="exit-present" @click="$router.back()">
-      ✕ Exit Presentation
-    </button>
-    
+    <button class="exit-present" @click="$router.back()">✕ Exit Presentation</button>
+
     <CanvasBase :interactive="true">
       <component
         v-for="element in elements.elements"
@@ -45,7 +43,7 @@ function getComponent(type) {
 onMounted(async () => {
   const projectId = route.params.projectId
   await elements.loadElements(projectId)
-  
+
   // Center on first card
   if (elements.cards.length > 0) {
     const firstCard = elements.cards[0]

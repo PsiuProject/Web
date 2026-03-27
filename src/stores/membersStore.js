@@ -4,47 +4,54 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 export const useMembersStore = defineStore('members', {
   state: () => ({
-    members: {},  // keyed by project_id
+    members: {}, // keyed by project_id
     loading: false,
     error: null
   }),
 
   getters: {
-    getMembersByProject: (state) => (projectId) =>
-      state.members[projectId] || [],
+    getMembersByProject: (state) => (projectId) => state.members[projectId] || [],
 
     getUserRole: (state) => (projectId, userId) => {
       const members = state.members[projectId] || []
-      const member = members.find(m => m.user_id === userId)
+      const member = members.find((m) => m.user_id === userId)
       return member?.role || null
     },
 
     isOwner: (state) => (projectId, userId) => {
       const members = state.members[projectId] || []
-      return members.some(m => m.user_id === userId && m.role === 'owner')
+      return members.some((m) => m.user_id === userId && m.role === 'owner')
     },
 
     isEditor: (state) => (projectId, userId) => {
       const members = state.members[projectId] || []
-      return members.some(m => m.user_id === userId && (m.role === 'editor' || m.role === 'owner'))
+      return members.some(
+        (m) => m.user_id === userId && (m.role === 'editor' || m.role === 'owner')
+      )
     },
 
     canComment: (state) => (projectId, userId) => {
       const members = state.members[projectId] || []
-      return members.some(m => m.user_id === userId && (m.role === 'commenter' || m.role === 'editor' || m.role === 'owner'))
+      return members.some(
+        (m) =>
+          m.user_id === userId &&
+          (m.role === 'commenter' || m.role === 'editor' || m.role === 'owner')
+      )
     },
 
     canEdit: (state) => (projectId, userId, ownerId) => {
       if (userId === ownerId) return true
       const members = state.members[projectId] || []
-      return members.some(m => m.user_id === userId && (m.role === 'editor' || m.role === 'owner'))
+      return members.some(
+        (m) => m.user_id === userId && (m.role === 'editor' || m.role === 'owner')
+      )
     }
   },
 
   actions: {
     async loadMembers(projectId) {
       if (!isSupabaseConfigured) return
-      
+
       this.loading = true
       const { data, error } = await supabase
         .from('project_members')
@@ -62,7 +69,7 @@ export const useMembersStore = defineStore('members', {
 
     async inviteMember(projectId, email, role = 'viewer') {
       if (!isSupabaseConfigured) return null
-      
+
       this.error = null
 
       const { data, error } = await supabase
@@ -91,7 +98,7 @@ export const useMembersStore = defineStore('members', {
 
     async updateRole(memberId, projectId, newRole) {
       if (!isSupabaseConfigured) return null
-      
+
       const { data, error } = await supabase
         .from('project_members')
         .update({ role: newRole })
@@ -105,7 +112,7 @@ export const useMembersStore = defineStore('members', {
       }
 
       const members = this.members[projectId] || []
-      const idx = members.findIndex(m => m.id === memberId)
+      const idx = members.findIndex((m) => m.id === memberId)
       if (idx >= 0) {
         members[idx] = data
       }
@@ -114,19 +121,15 @@ export const useMembersStore = defineStore('members', {
 
     async removeMember(memberId, projectId) {
       if (!isSupabaseConfigured) return false
-      
-      const { error } = await supabase
-        .from('project_members')
-        .delete()
-        .eq('id', memberId)
+
+      const { error } = await supabase.from('project_members').delete().eq('id', memberId)
 
       if (error) {
         this.error = error.message
         return false
       }
 
-      this.members[projectId] = (this.members[projectId] || [])
-        .filter(m => m.id !== memberId)
+      this.members[projectId] = (this.members[projectId] || []).filter((m) => m.id !== memberId)
       return true
     }
   }

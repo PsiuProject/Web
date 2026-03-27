@@ -17,7 +17,7 @@
           <button
             v-else
             class="context-menu-item"
-            :class="{ 'disabled': item.disabled, 'danger': item.danger }"
+            :class="{ disabled: item.disabled, danger: item.danger }"
             @click="onItemClick(item)"
             :title="item.tooltip"
           >
@@ -49,10 +49,10 @@ const menuRef = ref(null)
 const menuStyle = computed(() => {
   const menuWidth = 220
   const menuHeight = props.items.length * 36 + (props.title ? 40 : 10)
-  
+
   let x = props.x
   let y = props.y
-  
+
   // Prevent menu from going off screen
   if (x + menuWidth > window.innerWidth) {
     x = window.innerWidth - menuWidth - 10
@@ -60,7 +60,7 @@ const menuStyle = computed(() => {
   if (y + menuHeight > window.innerHeight) {
     y = window.innerHeight - menuHeight - 10
   }
-  
+
   return {
     left: `${Math.max(10, x)}px`,
     top: `${Math.max(10, y)}px`
@@ -73,7 +73,11 @@ function onItemClick(item) {
   emit('update:isVisible', false)
 }
 
-function closeMenu() {
+function closeMenu(event) {
+  // Don't close if clicking inside the menu
+  if (event && menuRef.value && menuRef.value.contains(event.target)) {
+    return
+  }
   emit('update:isVisible', false)
 }
 
@@ -85,12 +89,13 @@ function handleKeyDown(e) {
 
 onMounted(() => {
   document.addEventListener('keydown', handleKeyDown)
-  document.addEventListener('click', closeMenu)
+  // Use capture phase to intercept clicks before they reach document
+  document.addEventListener('click', closeMenu, true)
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyDown)
-  document.removeEventListener('click', closeMenu)
+  document.removeEventListener('click', closeMenu, true)
 })
 </script>
 
@@ -99,46 +104,46 @@ onUnmounted(() => {
   position: fixed;
   background: linear-gradient(180deg, rgba(20, 20, 18, 0.98) 0%, rgba(25, 25, 23, 0.98) 100%);
   border: 1px solid rgba(106, 125, 91, 0.4);
-  border-radius: 10px;
-  padding: 6px;
-  min-width: 200px;
-  box-shadow: 
-    0 16px 48px rgba(0, 0, 0, 0.5),
-    0 4px 12px rgba(0, 0, 0, 0.3);
+  border-radius: clamp(8px, 1.2vw, 10px);
+  padding: clamp(4px, 0.6vh, 6px);
+  min-width: clamp(180px, 22vw, 200px);
+  box-shadow:
+    0 clamp(12px, 2vh, 16px) clamp(32px, 6vh, 48px) rgba(0, 0, 0, 0.5),
+    0 clamp(3px, 0.5vh, 4px) clamp(8px, 1.5vh, 12px) rgba(0, 0, 0, 0.3);
   z-index: 10000;
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(clamp(12px, 2vh, 16px));
   animation: contextMenuFadeIn 0.15s ease-out;
   user-select: none;
 }
 
 .context-menu-header {
   font-family: 'Space Mono', monospace;
-  font-size: 0.65rem;
+  font-size: clamp(0.55rem, 0.7vw, 0.65rem);
   color: var(--moss-light);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  padding: 8px 12px;
+  padding: clamp(6px, 0.8vh, 8px) clamp(10px, 1.5vw, 12px);
   border-bottom: 1px solid rgba(106, 125, 91, 0.2);
-  margin-bottom: 4px;
+  margin-bottom: clamp(2px, 0.3vw, 4px);
 }
 
 .context-menu-items {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: clamp(2px, 0.3vw, 3px);
 }
 
 .context-menu-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: clamp(8px, 1vw, 10px);
+  padding: clamp(8px, 1.2vh, 10px) clamp(10px, 1.5vw, 12px);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: clamp(4px, 0.6vw, 6px);
   color: var(--paper);
   font-family: 'Space Mono', monospace;
-  font-size: 0.75rem;
+  font-size: clamp(0.65rem, 0.8vw, 0.75rem);
   cursor: pointer;
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
@@ -148,7 +153,7 @@ onUnmounted(() => {
 .context-menu-item:hover:not(.disabled):not(.separator) {
   background: linear-gradient(135deg, rgba(106, 125, 91, 0.2) 0%, rgba(106, 125, 91, 0.1) 100%);
   border-color: rgba(106, 125, 91, 0.4);
-  transform: translateX(2px);
+  transform: translateX(clamp(1px, 0.2vw, 2px));
 }
 
 .context-menu-item.disabled {
@@ -166,14 +171,14 @@ onUnmounted(() => {
 }
 
 .context-menu-separator {
-  height: 1px;
+  height: clamp(1px, 0.2vh, 2px);
   background: rgba(106, 125, 91, 0.3);
-  margin: 6px 0;
+  margin: clamp(4px, 0.6vh, 6px) 0;
 }
 
 .context-menu-icon {
-  font-size: 1rem;
-  width: 20px;
+  font-size: clamp(0.9rem, 1.1vw, 1rem);
+  width: clamp(18px, 2.2vw, 20px);
   text-align: center;
   display: flex;
   align-items: center;
@@ -185,7 +190,7 @@ onUnmounted(() => {
 }
 
 .context-menu-shortcut {
-  font-size: 0.65rem;
+  font-size: clamp(0.55rem, 0.7vw, 0.65rem);
   color: var(--moss-light);
   opacity: 0.6;
 }
@@ -193,7 +198,7 @@ onUnmounted(() => {
 @keyframes contextMenuFadeIn {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(-5px);
+    transform: scale(0.95) translateY(clamp(-4px, -0.6vh, -5px));
   }
   to {
     opacity: 1;

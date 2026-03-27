@@ -359,6 +359,13 @@
     "inspiration": "Inspiração",
     "evolution": "Evolução",
     "dependency": "Dependência",
-    "reference": "Referência"
+    "reference": "Referência",
+    "partner": "Parceiro",
+    "supplier": "Fornecedor",
+    "service": "Serviço",
+    "research": "Pesquisa",
+    "tool": "Ferramenta",
+    "mapping": "Mapeamento",
+    "focusArea": "Área de Foco"
   }
 }

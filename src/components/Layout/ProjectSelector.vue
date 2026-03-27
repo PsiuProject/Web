@@ -42,7 +42,13 @@
       </div>
 
       <div class="selector-footer">
-        <button class="new-project-btn" @click="$emit('close'); createNew()">
+        <button
+          class="new-project-btn"
+          @click="
+            $emit('close')
+            createNew()
+          "
+        >
           + NEW PROJECT
         </button>
       </div>
@@ -90,14 +96,14 @@ const filteredProjects = computed(() => {
   let list = projects.projects
 
   if (tab.value === 'owned') {
-    list = list.filter(p => p.owner_id === auth.userId)
+    list = list.filter((p) => p.owner_id === auth.userId)
   } else {
-    list = list.filter(p => p.owner_id !== auth.userId)
+    list = list.filter((p) => p.owner_id !== auth.userId)
   }
 
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
-    list = list.filter(p => {
+    list = list.filter((p) => {
       const title = getTitle(p).toLowerCase()
       const desc = getDescription(p).toLowerCase()
       return title.includes(q) || desc.includes(q)
@@ -253,9 +259,15 @@ function createNew() {
   margin-top: 0.25rem;
 }
 
-.item-status.tag-active { background: var(--stencil-orange); }
-.item-status.tag-pipeline { background: var(--moss); }
-.item-status.tag-done { background: var(--terracotta); }
+.item-status.tag-active {
+  background: var(--stencil-orange);
+}
+.item-status.tag-pipeline {
+  background: var(--moss);
+}
+.item-status.tag-done {
+  background: var(--terracotta);
+}
 
 .item-info {
   flex: 1;

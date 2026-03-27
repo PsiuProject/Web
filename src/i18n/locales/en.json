@@ -360,6 +360,13 @@
     "inspiration": "Inspiration",
     "evolution": "Evolution",
     "dependency": "Dependency",
-    "reference": "Reference"
+    "reference": "Reference",
+    "partner": "Partner",
+    "supplier": "Supplier",
+    "service": "Service",
+    "research": "Research",
+    "tool": "Tool",
+    "mapping": "Mapping",
+    "focusArea": "Focus Area"
   }
 }

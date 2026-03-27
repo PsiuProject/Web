@@ -11,8 +11,8 @@
  * @returns {{ translateX: number, translateY: number }}
  */
 export function centerOnPoint(worldX, worldY, zoom, viewportWidth, viewportHeight) {
-  const translateX = (viewportWidth / 2) - (worldX * zoom)
-  const translateY = (viewportHeight / 2) - (worldY * zoom)
+  const translateX = viewportWidth / 2 - worldX * zoom
+  const translateY = viewportHeight / 2 - worldY * zoom
   return { translateX, translateY }
 }
 
@@ -40,12 +40,12 @@ export function getCardCenter(position, size) {
  */
 export function centerOnCard(project, cardSize, zoom, viewportWidth, viewportHeight) {
   const position = project.computedPosition || project.position
-  
+
   if (!position) {
     console.error('[Centering] No position data for project:', project.id)
     return { translateX: 0, translateY: 0, zoom }
   }
-  
+
   const cardCenter = getCardCenter(position, cardSize)
   const { translateX, translateY } = centerOnPoint(
     cardCenter.x,
@@ -54,6 +54,6 @@ export function centerOnCard(project, cardSize, zoom, viewportWidth, viewportHei
     viewportWidth,
     viewportHeight
   )
-  
+
   return { translateX, translateY, zoom }
 }

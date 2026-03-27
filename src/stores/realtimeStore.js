@@ -5,9 +5,9 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase'
 export const useRealtimeStore = defineStore('realtime', {
   state: () => ({
     presenceChannel: null,
-    activeUsers: [],       // Users currently viewing the same project/canvas
-    editingFields: {},     // { fieldKey: { userId, userName, timestamp } }
-    dragPositions: {},     // { projectId: { userId, x, y } }
+    activeUsers: [], // Users currently viewing the same project/canvas
+    editingFields: {}, // { fieldKey: { userId, userName, timestamp } }
+    dragPositions: {}, // { projectId: { userId, x, y } }
     connected: false
   }),
 
@@ -29,7 +29,7 @@ export const useRealtimeStore = defineStore('realtime', {
     // Join a realtime presence channel for a project or canvas
     async joinChannel(channelName, userInfo) {
       if (!isSupabaseConfigured || !supabase) return
-      
+
       this.leaveChannel()
 
       this.presenceChannel = supabase.channel(channelName, {
@@ -44,15 +44,15 @@ export const useRealtimeStore = defineStore('realtime', {
           const state = this.presenceChannel.presenceState()
           this.activeUsers = Object.values(state)
             .flat()
-            .filter(u => u.id !== userInfo.id)
+            .filter((u) => u.id !== userInfo.id)
         })
         .on('presence', { event: 'join' }, ({ newPresences }) => {
           // User joined
         })
         .on('presence', { event: 'leave' }, ({ leftPresences }) => {
           // Clean up editing locks from departed users
-          leftPresences.forEach(u => {
-            Object.keys(this.editingFields).forEach(key => {
+          leftPresences.forEach((u) => {
+            Object.keys(this.editingFields).forEach((key) => {
               if (this.editingFields[key]?.userId === u.id) {
                 delete this.editingFields[key]
               }
@@ -61,32 +61,30 @@ export const useRealtimeStore = defineStore('realtime', {
         })
 
       // Listen for field editing broadcasts
-      this.presenceChannel
-        .on('broadcast', { event: 'field_editing' }, ({ payload }) => {
-          if (payload.userId !== userInfo.id) {
-            if (payload.editing) {
-              this.editingFields[payload.fieldKey] = {
-                userId: payload.userId,
-                userName: payload.userName,
-                timestamp: Date.now()
-              }
-            } else {
-              delete this.editingFields[payload.fieldKey]
+      this.presenceChannel.on('broadcast', { event: 'field_editing' }, ({ payload }) => {
+        if (payload.userId !== userInfo.id) {
+          if (payload.editing) {
+            this.editingFields[payload.fieldKey] = {
+              userId: payload.userId,
+              userName: payload.userName,
+              timestamp: Date.now()
             }
+          } else {
+            delete this.editingFields[payload.fieldKey]
           }
-        })
+        }
+      })
 
       // Listen for drag position broadcasts
-      this.presenceChannel
-        .on('broadcast', { event: 'drag_position' }, ({ payload }) => {
-          if (payload.userId !== userInfo.id) {
-            this.dragPositions[`${payload.projectId}-${payload.userId}`] = {
-              x: payload.x,
-              y: payload.y,
-              userName: payload.userName
-            }
+      this.presenceChannel.on('broadcast', { event: 'drag_position' }, ({ payload }) => {
+        if (payload.userId !== userInfo.id) {
+          this.dragPositions[`${payload.projectId}-${payload.userId}`] = {
+            x: payload.x,
+            y: payload.y,
+            userName: payload.userName
           }
-        })
+        }
+      })
 
       await this.presenceChannel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {

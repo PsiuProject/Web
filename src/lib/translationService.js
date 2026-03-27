@@ -31,7 +31,7 @@ async function flush() {
 
   for (const [projectId, fields] of snapshot) {
     const keys = [...fields.keys()]
-    const texts = keys.map(k => fields.get(k).text)
+    const texts = keys.map((k) => fields.get(k).text)
     const sourceLang = fields.values().next().value.lang
 
     try {
@@ -62,14 +62,16 @@ async function flush() {
 
       // Log metadata if available
       if (data.metadata) {
-        console.log(`[translate] Processed ${data.metadata.textsProcessed} texts (${data.metadata.characterCount} chars)` +
-          (data.metadata.usedFallback ? ' (using LibreTranslate fallback)' : ''))
-        
+        console.log(
+          `[translate] Processed ${data.metadata.textsProcessed} texts (${data.metadata.characterCount} chars)` +
+            (data.metadata.usedFallback ? ' (using LibreTranslate fallback)' : '')
+        )
+
         if (onTranslationStatus) {
-          onTranslationStatus({ 
-            type: 'complete', 
-            projectId, 
-            metadata: data.metadata 
+          onTranslationStatus({
+            type: 'complete',
+            projectId,
+            metadata: data.metadata
           })
         }
       } else if (onTranslationStatus) {
@@ -87,12 +89,16 @@ async function flush() {
       })
 
       // Handle meta separately — need to patch the array
-      const metaKeys = keys.filter(k => k.startsWith('meta.'))
+      const metaKeys = keys.filter((k) => k.startsWith('meta.'))
       if (metaKeys.length) {
-        const { data: row } = await supabase.from('projects').select('meta').eq('id', projectId).single()
+        const { data: row } = await supabase
+          .from('projects')
+          .select('meta')
+          .eq('id', projectId)
+          .single()
         if (row?.meta) {
           const meta = [...row.meta]
-          metaKeys.forEach(key => {
+          metaKeys.forEach((key) => {
             const idx = parseInt(key.split('.')[1])
             const t = data.translations[keys.indexOf(key)]
             if (meta[idx]) meta[idx] = { ...meta[idx], value: t }
@@ -102,7 +108,10 @@ async function flush() {
       }
 
       if (Object.keys(updates).length) {
-        const { error: updateError } = await supabase.from('projects').update(updates).eq('id', projectId)
+        const { error: updateError } = await supabase
+          .from('projects')
+          .update(updates)
+          .eq('id', projectId)
         if (updateError) {
           console.error('[translate] Failed to save translations:', updateError)
           if (onTranslationStatus) {
@@ -129,27 +138,27 @@ async function flush() {
  */
 export async function saveToGlossary(sourceText, sourceLang, targetText, targetLang) {
   if (!sourceText?.trim() || !targetText?.trim()) return
-  
+
   const trimmedSource = sourceText.trim()
   const trimmedTarget = targetText.trim()
-  
+
   try {
     const { data, error } = await supabase.from('translation_glossary').upsert(
-      { 
-        source_text: trimmedSource, 
-        source_lang: sourceLang, 
-        target_text: trimmedTarget, 
-        target_lang: targetLang 
+      {
+        source_text: trimmedSource,
+        source_lang: sourceLang,
+        target_text: trimmedTarget,
+        target_lang: targetLang
       },
       { onConflict: 'source_lang,source_text,target_lang' }
     )
-    
+
     if (error) {
       console.error('[glossary] Failed to save:', error)
     } else {
       console.log(`[glossary] Saved: "${trimmedSource}" (${sourceLang} → ${targetLang})`)
     }
-    
+
     return { success: !error, error }
   } catch (err) {
     console.error('[glossary] Exception:', err)
@@ -181,26 +190,27 @@ export async function translateBlock(blockId, content, lang) {
   // content may be JSONB {pt,en} or raw string — extract source text
   const text = typeof content === 'object' ? content[lang] : content
   if (!text || !isComplete(text)) return
-  
+
   try {
     const { data, error } = await supabase.functions.invoke('translate', {
       body: { texts: [text], sourceLang: lang }
     })
-    
+
     if (error) {
       console.error('[translate] Block translation error:', error)
       return
     }
-    
+
     if (!data?.translations?.[0]) {
       console.warn('[translate] No translation returned for block')
       return
     }
-    
-    const { error: updateError } = await supabase.from('project_content_blocks')
+
+    const { error: updateError } = await supabase
+      .from('project_content_blocks')
       .update({ content: data.translations[0] })
       .eq('id', blockId)
-      
+
     if (updateError) {
       console.error('[translate] Failed to save block translation:', updateError)
     }
@@ -211,7 +221,7 @@ export async function translateBlock(blockId, content, lang) {
 
 /**
  * Cancel pending translations for a project (e.g., when navigating away)
- * @param {string} projectId 
+ * @param {string} projectId
  */
 export function cancelPendingTranslations(projectId) {
   if (pending.has(projectId)) {

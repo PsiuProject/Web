@@ -1,50 +1,67 @@
 <template>
   <div class="welcome-view">
     <AppHeader mode="gallery" />
-    
+
     <div class="welcome-content-wrapper">
       <!-- Left side: Welcome message -->
       <div class="welcome-left">
-        <h1 class="main-title">EARTH<br>GUARDIANS<span>.SUR</span></h1>
+        <h1 class="main-title">
+          EARTH
+          <br />
+          GUARDIANS
+          <span>.SUR</span>
+        </h1>
         <p class="subtitle">Canvas colaborativo para projetos ambientais</p>
-        
+
         <div v-if="isDevMode" class="dev-mode-badge">
-          <span class="dev-icon">&#9881;</span> DEV MODE
+          <span class="dev-icon">&#9881;</span>
+          DEV MODE
         </div>
-        
+
         <div class="login-section">
           <button class="login-btn" @click="handleLogin">
             <span class="google-icon">G</span>
             {{ isDevMode ? 'START TESTING (Mock Login)' : 'ENTRAR COM GOOGLE' }}
           </button>
           <p class="login-note">
-            <template v-if="isDevMode">
-              Click to start testing with mock data offline.
-            </template>
-            <template v-else>
-              Acesse com Google para ver e editar seus projetos.
-            </template>
+            <template v-if="isDevMode">Click to start testing with mock data offline.</template>
+            <template v-else>Acesse com Google para ver e editar seus projetos.</template>
           </p>
         </div>
-        
+
         <div v-if="isDevMode" class="dev-features">
           <h3>Available for Testing:</h3>
           <ul>
-            <li><span class="check">&#10003;</span> View mode</li>
-            <li><span class="check">&#10003;</span> Edit mode (add/edit elements)</li>
-            <li><span class="check">&#10003;</span> Comment mode</li>
-            <li><span class="check">&#10003;</span> Undo/Redo</li>
-            <li><span class="check">&#10003;</span> Zoom/Pan with momentum</li>
+            <li>
+              <span class="check">&#10003;</span>
+              View mode
+            </li>
+            <li>
+              <span class="check">&#10003;</span>
+              Edit mode (add/edit elements)
+            </li>
+            <li>
+              <span class="check">&#10003;</span>
+              Comment mode
+            </li>
+            <li>
+              <span class="check">&#10003;</span>
+              Undo/Redo
+            </li>
+            <li>
+              <span class="check">&#10003;</span>
+              Zoom/Pan with momentum
+            </li>
           </ul>
         </div>
       </div>
-      
+
       <!-- Right side: Project selector or CTA -->
       <div class="welcome-right">
         <div class="right-panel">
           <h2 class="panel-title">SELECT PROJECT</h2>
           <p class="panel-subtitle">Choose a project to view, edit or comment</p>
-          
+
           <div class="select-tabs">
             <button :class="{ active: tab === 'owned' }" @click="tab = 'owned'">
               Your Projects ({{ ownedProjects.length }})
@@ -53,11 +70,11 @@
               All Projects ({{ allProjects.length }})
             </button>
           </div>
-          
+
           <div class="search-box">
             <input v-model="search" type="text" placeholder="Search projects..." />
           </div>
-          
+
           <div class="project-list">
             <div
               v-for="project in filteredProjects"
@@ -78,7 +95,7 @@
               </div>
               <div class="item-arrow">→</div>
             </div>
-            
+
             <div v-if="filteredProjects.length === 0" class="no-projects">
               <p>No projects found</p>
               <button v-if="auth.isLoggedIn" class="create-btn" @click="showNewProjectModal = true">
@@ -86,16 +103,14 @@
               </button>
             </div>
           </div>
-          
+
           <div class="panel-footer">
-            <button class="view-all-btn" @click="goToGallery">
-              VIEW ALL PROJECTS IN GALLERY
-            </button>
+            <button class="view-all-btn" @click="goToGallery">VIEW ALL PROJECTS IN GALLERY</button>
           </div>
         </div>
       </div>
     </div>
-    
+
     <!-- New Project Modal -->
     <div v-if="showNewProjectModal" class="modal-overlay" @click="showNewProjectModal = false">
       <div class="modal-content" @click.stop>
@@ -103,15 +118,29 @@
         <form @submit.prevent="createProject" class="new-project-form">
           <div class="form-group">
             <label>Title (PT)</label>
-            <input v-model="newProject.title_pt" type="text" required placeholder="Titulo do projeto" />
+            <input
+              v-model="newProject.title_pt"
+              type="text"
+              required
+              placeholder="Titulo do projeto"
+            />
           </div>
           <div class="form-group">
             <label>Title (EN)</label>
-            <input v-model="newProject.title_en" type="text" placeholder="Project title (optional)" />
+            <input
+              v-model="newProject.title_en"
+              type="text"
+              placeholder="Project title (optional)"
+            />
           </div>
           <div class="form-group">
             <label>Description (PT)</label>
-            <textarea v-model="newProject.description_pt" rows="3" required placeholder="Descricao breve"></textarea>
+            <textarea
+              v-model="newProject.description_pt"
+              rows="3"
+              required
+              placeholder="Descricao breve"
+            ></textarea>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -132,7 +161,9 @@
             </div>
           </div>
           <div class="form-actions">
-            <button type="button" class="cancel-btn" @click="showNewProjectModal = false">Cancel</button>
+            <button type="button" class="cancel-btn" @click="showNewProjectModal = false">
+              Cancel
+            </button>
             <button type="submit" class="create-btn-modal" :disabled="creating">
               {{ creating ? 'Creating...' : 'Create Project' }}
             </button>
@@ -160,27 +191,33 @@ const tab = ref('owned')
 const search = ref('')
 const showNewProjectModal = ref(false)
 const creating = ref(false)
-const newProject = ref({ title_pt: '', title_en: '', description_pt: '', status: 'active', privacy: 'private' })
+const newProject = ref({
+  title_pt: '',
+  title_en: '',
+  description_pt: '',
+  status: 'active',
+  privacy: 'private'
+})
 
 const isDevMode = computed(() => {
   return import.meta.env.DEV || window.location.hostname === 'localhost'
 })
 
 const allProjects = computed(() => projects.projects)
-const ownedProjects = computed(() => projects.projects.filter(p => p.owner_id === auth.userId))
+const ownedProjects = computed(() => projects.projects.filter((p) => p.owner_id === auth.userId))
 
 const filteredProjects = computed(() => {
   let list = tab.value === 'owned' ? ownedProjects.value : allProjects.value
-  
+
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
-    list = list.filter(p => {
+    list = list.filter((p) => {
       const title = getTitle(p).toLowerCase()
       const desc = getDescription(p).toLowerCase()
       return title.includes(q) || desc.includes(q)
     })
   }
-  
+
   return list
 })
 
@@ -217,7 +254,10 @@ async function createProject() {
   creating.value = true
   try {
     const data = {
-      title: { pt: newProject.value.title_pt, ...(newProject.value.title_en ? { en: newProject.value.title_en } : {}) },
+      title: {
+        pt: newProject.value.title_pt,
+        ...(newProject.value.title_en ? { en: newProject.value.title_en } : {})
+      },
       description: { pt: newProject.value.description_pt },
       status: newProject.value.status,
       privacy: newProject.value.privacy,
@@ -230,7 +270,13 @@ async function createProject() {
     }
     const created = await projects.createProject(data)
     if (created) {
-      newProject.value = { title_pt: '', title_en: '', description_pt: '', status: 'active', privacy: 'private' }
+      newProject.value = {
+        title_pt: '',
+        title_en: '',
+        description_pt: '',
+        status: 'active',
+        privacy: 'private'
+      }
       showNewProjectModal.value = false
       router.push({ name: 'canvas-edit', params: { projectId: created.id } })
     }
@@ -319,7 +365,9 @@ onMounted(async () => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .login-section {
@@ -509,9 +557,15 @@ onMounted(async () => {
   margin-top: 0.25rem;
 }
 
-.item-status.status-active { background: var(--stencil-orange); }
-.item-status.status-pipeline { background: var(--moss); }
-.item-status.status-done { background: var(--terracotta); }
+.item-status.status-active {
+  background: var(--stencil-orange);
+}
+.item-status.status-pipeline {
+  background: var(--moss);
+}
+.item-status.status-done {
+  background: var(--terracotta);
+}
 
 .item-content {
   flex: 1;
@@ -742,15 +796,15 @@ onMounted(async () => {
     grid-template-columns: 1fr;
     overflow-y: auto;
   }
-  
+
   .welcome-left {
     padding: 1rem;
   }
-  
+
   .welcome-right {
     align-items: flex-start;
   }
-  
+
   .right-panel {
     max-height: none;
   }

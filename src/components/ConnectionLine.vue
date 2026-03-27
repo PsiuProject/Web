@@ -1,18 +1,14 @@
 <template>
-  <g 
-    class="connection-group"
-    @mouseenter="isHovered = true"
-    @mouseleave="isHovered = false"
-  >
+  <g class="connection-group" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
     <!-- Invisible wider line for easier hover detection -->
     <path
       :d="pathData"
       stroke="transparent"
       stroke-width="24"
       fill="none"
-      style="cursor: pointer;"
+      style="cursor: pointer"
     />
-    
+
     <!-- Background glow line (always visible, low opacity) -->
     <path
       :d="pathData"
@@ -22,7 +18,7 @@
       :opacity="0.08"
       class="connection-glow"
     />
-    
+
     <!-- Animated dotted line - lower opacity by default -->
     <path
       :d="pathData"
@@ -34,7 +30,7 @@
       class="connection-line"
       :class="{ 'connection-line-animated': !isHovered }"
     />
-    
+
     <!-- Secondary slower animation layer -->
     <path
       :d="pathData"
@@ -46,7 +42,7 @@
       class="connection-line-slow"
       :class="{ 'connection-line-animated-slow': !isHovered }"
     />
-    
+
     <!-- Connection dots at endpoints -->
     <circle
       :cx="x1"
@@ -64,23 +60,12 @@
       :opacity="isHovered ? 0.9 : 0.35"
       class="connection-dot"
     />
-    
+
     <!-- Animated dot traveling along path -->
-    <circle
-      v-if="isHovered"
-      r="3"
-      :fill="lineColor"
-      :opacity="0.8"
-      class="connection-traveler"
-    >
-      <animateMotion 
-        :path="pathData" 
-        dur="3s" 
-        repeatCount="indefinite"
-        fill="freeze"
-      />
+    <circle v-if="isHovered" r="3" :fill="lineColor" :opacity="0.8" class="connection-traveler">
+      <animateMotion :path="pathData" dur="3s" repeatCount="indefinite" fill="freeze" />
     </circle>
-    
+
     <!-- Tooltip on hover -->
     <g v-if="isHovered && connectionTypeKey" class="connection-tooltip">
       <rect
@@ -102,7 +87,7 @@
         fill="#e2ded0"
         font-size="11"
         font-family="'Space Mono', monospace"
-        style="pointer-events: none; letter-spacing: 0.05vw;"
+        style="pointer-events: none; letter-spacing: 0.05vw"
       >
         {{ t(connectionTypeKey) }}
       </text>
@@ -132,21 +117,21 @@ const pathData = computed(() => {
   const dx = props.x2 - props.x1
   const dy = props.y2 - props.y1
   const distance = Math.sqrt(dx * dx + dy * dy)
-  
+
   // Control point offset based on distance (smoother for longer paths)
   const offsetFactor = Math.min(0.5, 300 / Math.max(distance, 100))
   const controlOffset = Math.abs(dy) * offsetFactor + Math.abs(dx) * 0.15
-  
+
   // Cubic bezier for smoother S-curve
   const midX = (props.x1 + props.x2) / 2
   const midY = (props.y1 + props.y2) / 2
-  
+
   // Additional control points for more natural curves
-  const cx1 = props.x1 + (dx * 0.25)
+  const cx1 = props.x1 + dx * 0.25
   const cy1 = props.y1 + controlOffset
-  const cx2 = props.x1 + (dx * 0.75)
+  const cx2 = props.x1 + dx * 0.75
   const cy2 = props.y2 - controlOffset
-  
+
   return `M ${props.x1} ${props.y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${props.x2} ${props.y2}`
 })
 
@@ -176,7 +161,9 @@ const lineColor = computed(() => props.color)
 }
 
 .connection-line {
-  transition: opacity 0.3s ease, stroke-width 0.2s ease;
+  transition:
+    opacity 0.3s ease,
+    stroke-width 0.2s ease;
 }
 
 .connection-line-animated {
@@ -196,7 +183,9 @@ const lineColor = computed(() => props.color)
 }
 
 .connection-dot {
-  transition: opacity 0.3s ease, r 0.2s ease;
+  transition:
+    opacity 0.3s ease,
+    r 0.2s ease;
 }
 
 .connection-traveler {

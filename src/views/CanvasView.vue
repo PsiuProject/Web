@@ -25,11 +25,7 @@
     </CanvasBase>
 
     <!-- Read-only thread viewer -->
-    <CommentThread
-      v-if="activeThread"
-      :thread="activeThread"
-      @close="activeThread = null"
-    />
+    <CommentThread v-if="activeThread" :thread="activeThread" @close="activeThread = null" />
   </div>
 </template>
 
@@ -59,7 +55,9 @@ const hoveredElementId = ref(null)
 const activeThread = ref(null)
 
 const componentMap = { card: Card, text: Text, image: ImageEl, link: Link, button: Link }
-function getComponent(type) { return componentMap[type] || Text }
+function getComponent(type) {
+  return componentMap[type] || Text
+}
 
 function hasComments(elementId) {
   return (comments.activeThreadsByElement[elementId]?.length || 0) > 0
@@ -67,7 +65,7 @@ function hasComments(elementId) {
 
 // Only show bubbles for elements that have comments (for viewers)
 const elementsWithComments = computed(() => {
-  return elements.elements.filter(el => hasComments(el.id))
+  return elements.elements.filter((el) => hasComments(el.id))
 })
 
 function onElementClick(element) {

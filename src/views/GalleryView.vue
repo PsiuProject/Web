@@ -1,15 +1,15 @@
 <template>
   <div class="gallery-view">
     <AppHeader mode="gallery" />
-    
+
     <div v-if="!auth.isLoggedIn" class="login-prompt">
       <p>Please login to view projects</p>
       <button @click="handleLogin">Login with Google</button>
     </div>
-    
+
     <template v-else>
       <!-- No sidebar in gallery - clean view -->
-      
+
       <div
         id="viewport"
         @mousedown="onMouseDown"
@@ -99,22 +99,28 @@ async function handleLogin() {
 const allRootProjects = computed(() => {
   console.log('[Gallery] Computing allRootProjects...')
   console.log('[Gallery] galleryStore.filteredProjects:', galleryStore.filteredProjects.length)
-  console.log('[Gallery] filteredProjects data:', galleryStore.filteredProjects.map(p => ({ 
-    id: p.id, 
-    title: p.titleKey || p.title, 
-    parentId: p.parentId,
-    type: p.type,
-    owner_id: p.owner_id 
-  })))
-  
-  const result = galleryStore.filteredProjects.filter(p => {
+  console.log(
+    '[Gallery] filteredProjects data:',
+    galleryStore.filteredProjects.map((p) => ({
+      id: p.id,
+      title: p.titleKey || p.title,
+      parentId: p.parentId,
+      type: p.type,
+      owner_id: p.owner_id
+    }))
+  )
+
+  const result = galleryStore.filteredProjects.filter((p) => {
     // Show all root projects (no sub-projects at root level)
     return !p.parentId
   })
-  
+
   console.log('[Gallery] allRootProjects result:', result.length)
-  console.log('[Gallery] allRootProjects data:', result.map(p => ({ id: p.id, title: p.titleKey || p.title, parentId: p.parentId })))
-  
+  console.log(
+    '[Gallery] allRootProjects data:',
+    result.map((p) => ({ id: p.id, title: p.titleKey || p.title, parentId: p.parentId }))
+  )
+
   return result
 })
 
@@ -123,12 +129,15 @@ const layoutedProjects = computed(() => {
   console.log('[Gallery] Computing layoutedProjects...')
   const result = galleryStore.layoutOwnedProjects(allRootProjects.value)
   console.log('[Gallery] layoutedProjects result:', result.length)
-  console.log('[Gallery] layoutedProjects data:', result.map(p => ({ 
-    id: p.id, 
-    title: p.titleKey || p.title, 
-    type: p.type,
-    computedPosition: p.computedPosition 
-  })))
+  console.log(
+    '[Gallery] layoutedProjects data:',
+    result.map((p) => ({
+      id: p.id,
+      title: p.titleKey || p.title,
+      type: p.type,
+      computedPosition: p.computedPosition
+    }))
+  )
   return result
 })
 
@@ -139,9 +148,9 @@ const sectionSeparators = computed(() => {
     pipeline: { label: 'PIPELINE / ESCRITA', color: '#6a7d5b', top: null },
     done: { label: 'CONCLUIDOS', color: '#b55d3a', top: null }
   }
-  
+
   // Find the topmost project in each section
-  layoutedProjects.value.forEach(p => {
+  layoutedProjects.value.forEach((p) => {
     if (!p.parentId && sections[p.type] && p.computedPosition) {
       const currentTop = sections[p.type].top
       if (currentTop === null || p.computedPosition.top < currentTop) {
@@ -149,7 +158,7 @@ const sectionSeparators = computed(() => {
       }
     }
   })
-  
+
   // Convert to separator array
   return Object.entries(sections)
     .filter(([_, section]) => section.top !== null)
@@ -164,7 +173,7 @@ const sectionSeparators = computed(() => {
 })
 
 const validConnections = computed(() => {
-  return galleryStore.projectConnections.filter(conn => {
+  return galleryStore.projectConnections.filter((conn) => {
     const start = getConnectionStart(conn.parentId)
     const end = getConnectionEnd(conn.id)
     return start.x > 0 || start.y > 0 || end.x > 0 || end.y > 0
@@ -180,7 +189,9 @@ function getCardDimensions(project) {
 
 function getConnectionStart(parentId) {
   const layouted = layoutedProjects.value
-  const parent = layouted.find(p => p.id === parentId) || galleryStore.filteredProjects.find(p => p.id === parentId)
+  const parent =
+    layouted.find((p) => p.id === parentId) ||
+    galleryStore.filteredProjects.find((p) => p.id === parentId)
   if (!parent) return { x: 0, y: 0 }
   const pos = parent.computedPosition || parent.position || { left: 0, top: 0 }
   const dims = getCardDimensions(parent)
@@ -189,7 +200,9 @@ function getConnectionStart(parentId) {
 
 function getConnectionEnd(childId) {
   const layouted = layoutedProjects.value
-  const child = layouted.find(p => p.id === childId) || galleryStore.filteredProjects.find(p => p.id === childId)
+  const child =
+    layouted.find((p) => p.id === childId) ||
+    galleryStore.filteredProjects.find((p) => p.id === childId)
   if (!child) return { x: 0, y: 0 }
   const pos = child.computedPosition || child.position || { left: 0, top: 0 }
   const dims = getCardDimensions(child)
@@ -203,7 +216,15 @@ function getConnectionColor(projectType) {
 
 // Mouse handlers
 function onMouseDown(e) {
-  if (e.target.closest('.project-card') || e.target.closest('button') || e.target.closest('a') || e.target.closest('input') || e.target.closest('select') || e.target.closest('textarea')) return
+  if (
+    e.target.closest('.project-card') ||
+    e.target.closest('button') ||
+    e.target.closest('a') ||
+    e.target.closest('input') ||
+    e.target.closest('select') ||
+    e.target.closest('textarea')
+  )
+    return
   document.body.classList.add('dragging')
   galleryStore.updateMouse(e.clientX, e.clientY)
   galleryStore.setStart(e.clientX, e.clientY)
@@ -256,20 +277,26 @@ onMounted(async () => {
   console.log('[Gallery] Loading projects...')
   // Load projects only in gallery view
   await projectsStore.loadProjects()
-  
+
   console.log('[Gallery] Projects loaded:', projectsStore.projects.length)
-  console.log('[Gallery] All projects:', projectsStore.projects.map(p => ({ id: p.id, title: p.title, owner_id: p.owner_id })))
+  console.log(
+    '[Gallery] All projects:',
+    projectsStore.projects.map((p) => ({ id: p.id, title: p.title, owner_id: p.owner_id }))
+  )
   console.log('[Gallery] Filtered projects:', galleryStore.filteredProjects.length)
   console.log('[Gallery] Auth userId:', auth.userId)
   console.log('[Gallery] Is logged in:', auth.isLoggedIn)
-  
+
   const allRoot = allRootProjects.value
   console.log('[Gallery] All root projects for layout:', allRoot.length)
-  console.log('[Gallery] Root projects:', allRoot.map(p => ({ id: p.id, title: p.title, parentId: p.parentId })))
-  
+  console.log(
+    '[Gallery] Root projects:',
+    allRoot.map((p) => ({ id: p.id, title: p.title, parentId: p.parentId }))
+  )
+
   const layouted = layoutedProjects.value
   console.log('[Gallery] Layouted projects:', layouted.length)
-  
+
   const viewportEl = document.getElementById('viewport')
   if (viewportEl) {
     viewportEl.addEventListener('wheel', onWheel, { passive: false })

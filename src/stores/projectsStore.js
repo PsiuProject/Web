@@ -17,38 +17,39 @@ export const useProjectsStore = defineStore('projects', {
   }),
 
   getters: {
-    getProject: (state) => (id) => state.projects.find(p => p.id === id),
+    getProject: (state) => (id) => state.projects.find((p) => p.id === id),
 
-    rootProjects: (state) => state.projects.filter(p => !p.parent_id),
+    rootProjects: (state) => state.projects.filter((p) => !p.parent_id),
 
-    getChildren: (state) => (parentId) =>
-      state.projects.filter(p => p.parent_id === parentId),
+    getChildren: (state) => (parentId) => state.projects.filter((p) => p.parent_id === parentId),
 
     getChildCount: (state) => (projectId) =>
-      state.projects.filter(p => p.parent_id === projectId).length,
+      state.projects.filter((p) => p.parent_id === projectId).length,
 
-    projectsByStatus: (state) => (status) =>
-      state.projects.filter(p => p.status === status),
+    projectsByStatus: (state) => (status) => state.projects.filter((p) => p.status === status),
 
     // Convert Supabase format to the format the gallery expects
     galleryProjects: (state) => {
       console.log('[Projects Store] galleryProjects getter called')
       console.log('[Projects Store] state.projects count:', state.projects.length)
-      console.log('[Projects Store] state.projects:', state.projects.map(p => ({ 
-        id: p.id, 
-        title: p.title, 
-        status: p.status,
-        owner_id: p.owner_id,
-        parent_id: p.parent_id 
-      })))
-      
-      const result = state.projects.map(p => ({
+      console.log(
+        '[Projects Store] state.projects:',
+        state.projects.map((p) => ({
+          id: p.id,
+          title: p.title,
+          status: p.status,
+          owner_id: p.owner_id,
+          parent_id: p.parent_id
+        }))
+      )
+
+      const result = state.projects.map((p) => ({
         id: p.id,
         type: p.status,
         size: p.size || 'card-md',
         year: p.year,
         statusTagKey: p.status_tag || `status.${p.status}`,
-        titleKey: p.title,        // JSONB {pt,en} or legacy string
+        titleKey: p.title, // JSONB {pt,en} or legacy string
         descriptionKey: p.description,
         territory: p.territory || 'Brasil',
         axis: p.axis || [],
@@ -67,16 +68,19 @@ export const useProjectsStore = defineStore('projects', {
         position_y: p.position_y || 0,
         _raw: p
       }))
-      
+
       console.log('[Projects Store] galleryProjects result count:', result.length)
-      console.log('[Projects Store] galleryProjects:', result.map(p => ({ 
-        id: p.id, 
-        title: p.titleKey, 
-        type: p.type,
-        owner_id: p.owner_id,
-        parentId: p.parentId 
-      })))
-      
+      console.log(
+        '[Projects Store] galleryProjects:',
+        result.map((p) => ({
+          id: p.id,
+          title: p.titleKey,
+          type: p.type,
+          owner_id: p.owner_id,
+          parentId: p.parentId
+        }))
+      )
+
       return result
     },
 
@@ -101,7 +105,10 @@ export const useProjectsStore = defineStore('projects', {
       if (this.isOfflineDev) {
         const mockProjects = mockStore.getProjects()
         console.log('[Projects] Loading mock projects:', mockProjects.length)
-        console.log('[Projects] Mock projects:', mockProjects.map(p => ({ id: p.id, title: p.title, owner_id: p.owner_id })))
+        console.log(
+          '[Projects] Mock projects:',
+          mockProjects.map((p) => ({ id: p.id, title: p.title, owner_id: p.owner_id }))
+        )
         this.projects = mockProjects
         this.isSupabaseLoaded = true
         this.loading = false
@@ -129,8 +136,11 @@ export const useProjectsStore = defineStore('projects', {
         }
 
         console.log('[Projects] Supabase returned:', data?.length || 0, 'projects')
-        console.log('[Projects] Supabase data:', data?.map(p => ({ id: p.id, title: p.title, status: p.status, owner_id: p.owner_id })))
-        
+        console.log(
+          '[Projects] Supabase data:',
+          data?.map((p) => ({ id: p.id, title: p.title, status: p.status, owner_id: p.owner_id }))
+        )
+
         if (data && data.length > 0) {
           this.projects = data
           this.isSupabaseLoaded = true
@@ -151,9 +161,9 @@ export const useProjectsStore = defineStore('projects', {
 
     // Use hardcoded data as fallback
     useFallbackData() {
-      this.projects = fallbackData.map(p => ({
+      this.projects = fallbackData.map((p) => ({
         id: p.id,
-        title: p.titleKey,        // i18n key string — displayText handles it
+        title: p.titleKey, // i18n key string — displayText handles it
         description: p.descriptionKey,
         status: p.type,
         status_tag: p.statusTagKey,
@@ -223,11 +233,11 @@ export const useProjectsStore = defineStore('projects', {
       // Use mock data in dev mode
       if (this.isOfflineDev) {
         const projects = mockStore.getProjects()
-        const idx = projects.findIndex(p => p.id === id)
+        const idx = projects.findIndex((p) => p.id === id)
         if (idx >= 0) {
           projects[idx] = { ...projects[idx], ...updates, updated_at: new Date().toISOString() }
           mockStore.saveProjects(projects)
-          const localIdx = this.projects.findIndex(p => p.id === id)
+          const localIdx = this.projects.findIndex((p) => p.id === id)
           if (localIdx >= 0) {
             this.projects[localIdx] = { ...this.projects[localIdx], ...updates }
           }
@@ -238,14 +248,11 @@ export const useProjectsStore = defineStore('projects', {
       if (!isSupabaseConfigured) return
 
       try {
-        const { error } = await supabase
-          .from('projects')
-          .update(updates)
-          .eq('id', id)
+        const { error } = await supabase.from('projects').update(updates).eq('id', id)
 
         if (error) throw error
 
-        const idx = this.projects.findIndex(p => p.id === id)
+        const idx = this.projects.findIndex((p) => p.id === id)
         if (idx >= 0) {
           this.projects[idx] = { ...this.projects[idx], ...updates }
         }
@@ -263,22 +270,26 @@ export const useProjectsStore = defineStore('projects', {
 
       this.realtimeChannel = supabase
         .channel('projects')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'projects'
-        }, (payload) => {
-          const { eventType, new: newRecord, old: oldRecord } = payload
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'projects'
+          },
+          (payload) => {
+            const { eventType, new: newRecord, old: oldRecord } = payload
 
-          if (eventType === 'INSERT') {
-            this.projects.push(newRecord)
-          } else if (eventType === 'UPDATE') {
-            const idx = this.projects.findIndex(p => p.id === newRecord.id)
-            if (idx >= 0) this.projects[idx] = newRecord
-          } else if (eventType === 'DELETE') {
-            this.projects = this.projects.filter(p => p.id !== oldRecord.id)
+            if (eventType === 'INSERT') {
+              this.projects.push(newRecord)
+            } else if (eventType === 'UPDATE') {
+              const idx = this.projects.findIndex((p) => p.id === newRecord.id)
+              if (idx >= 0) this.projects[idx] = newRecord
+            } else if (eventType === 'DELETE') {
+              this.projects = this.projects.filter((p) => p.id !== oldRecord.id)
+            }
           }
-        })
+        )
         .subscribe()
     },
 

@@ -8,7 +8,9 @@
         class="filter-btn"
         :class="{ active: store.activeCategoryFilter === cat }"
         @click="store.activeCategoryFilter = store.activeCategoryFilter === cat ? null : cat"
-      >{{ $t('categories.' + cat) }}</button>
+      >
+        {{ $t('categories.' + cat) }}
+      </button>
     </div>
     <div class="filter-group">
       <div class="filter-label">{{ $t('sidebar.years') }}</div>
@@ -18,7 +20,9 @@
         class="filter-btn"
         :class="{ active: store.activeYearFilter === year }"
         @click="store.activeYearFilter = store.activeYearFilter === year ? null : year"
-      >{{ $t('years.' + year) }}</button>
+      >
+        {{ $t('years.' + year) }}
+      </button>
     </div>
   </aside>
 </template>

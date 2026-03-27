@@ -68,7 +68,7 @@ router.beforeEach(async (to, from, next) => {
 
   // Wait for auth to finish loading
   if (auth.loading) {
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       const check = () => {
         if (!auth.loading) return resolve()
         setTimeout(check, 50)

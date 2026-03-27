@@ -8,11 +8,22 @@
       </div>
       <div class="thread-actions">
         <!-- Resolve button: any commenter can resolve -->
-        <button v-if="permissions.canComment && !thread.resolved && !thread.deleted" class="resolve-btn" @click="resolve" title="Mark as resolved">
-          <span class="resolve-icon">&#10003;</span> Resolve
+        <button
+          v-if="permissions.canComment && !thread.resolved && !thread.deleted"
+          class="resolve-btn"
+          @click="resolve"
+          title="Mark as resolved"
+        >
+          <span class="resolve-icon">&#10003;</span>
+          Resolve
         </button>
         <!-- Delete button: only project owner (canDelete) can permanently delete -->
-        <button v-if="permissions.canDelete && !thread.deleted" class="delete-thread-btn" @click="deleteThread" title="Permanently delete thread">
+        <button
+          v-if="permissions.canDelete && !thread.deleted"
+          class="delete-thread-btn"
+          @click="deleteThread"
+          title="Permanently delete thread"
+        >
           <span>&#128465;</span>
         </button>
         <button class="close-btn" @click="$emit('close')">&times;</button>
@@ -22,32 +33,67 @@
     <!-- Comments list -->
     <div class="thread-messages" ref="messagesRef">
       <!-- Root comment -->
-      <div class="message root-message" :class="{ resolved: thread.resolved, deleted: thread.deleted }">
+      <div
+        class="message root-message"
+        :class="{ resolved: thread.resolved, deleted: thread.deleted }"
+      >
         <div class="message-header">
           <div class="message-avatar">
-            <img v-if="thread.user?.raw_user_meta_data?.avatar_url" :src="thread.user.raw_user_meta_data.avatar_url" />
+            <img
+              v-if="thread.user?.raw_user_meta_data?.avatar_url"
+              :src="thread.user.raw_user_meta_data.avatar_url"
+            />
             <span v-else>{{ getInitial(thread.user) }}</span>
           </div>
           <div class="message-meta">
             <strong>{{ getName(thread.user) }}</strong>
             <span class="message-time">{{ formatTime(thread.created_at) }}</span>
           </div>
-          <button v-if="!thread.deleted && permissions.canComment" class="reply-msg-btn" @click="setReplyTarget(thread)" title="Reply to this">&#8617;</button>
-          <button v-if="permissions.canDelete && !thread.deleted" class="delete-msg-btn" @click="deleteComment(thread.id)" title="Delete">&times;</button>
+          <button
+            v-if="!thread.deleted && permissions.canComment"
+            class="reply-msg-btn"
+            @click="setReplyTarget(thread)"
+            title="Reply to this"
+          >
+            &#8617;
+          </button>
+          <button
+            v-if="permissions.canDelete && !thread.deleted"
+            class="delete-msg-btn"
+            @click="deleteComment(thread.id)"
+            title="Delete"
+          >
+            &times;
+          </button>
         </div>
         <p class="message-content" :class="{ 'deleted-text': thread.deleted }">
           {{ thread.deleted ? '[deleted]' : thread.content }}
         </p>
         <div v-if="!thread.deleted && thread.attachment_url" class="message-attachment">
-          <img v-if="thread.attachment_type === 'image'" :src="thread.attachment_url" class="attachment-image" />
-          <a v-else :href="thread.attachment_url" target="_blank" rel="noopener" class="attachment-link">
+          <img
+            v-if="thread.attachment_type === 'image'"
+            :src="thread.attachment_url"
+            class="attachment-image"
+          />
+          <a
+            v-else
+            :href="thread.attachment_url"
+            target="_blank"
+            rel="noopener"
+            class="attachment-link"
+          >
             {{ thread.attachment_type === 'document' ? 'View Document' : thread.attachment_url }}
           </a>
         </div>
       </div>
 
       <!-- Replies -->
-      <div v-for="reply in thread.replies" :key="reply.id" class="message reply-message" :class="{ resolved: thread.resolved, deleted: reply.deleted }">
+      <div
+        v-for="reply in thread.replies"
+        :key="reply.id"
+        class="message reply-message"
+        :class="{ resolved: thread.resolved, deleted: reply.deleted }"
+      >
         <!-- Reply-to indicator -->
         <div v-if="reply.reply_to_id" class="reply-to-preview">
           <span class="reply-to-label">&#8617; replying to</span>
@@ -55,22 +101,51 @@
         </div>
         <div class="message-header">
           <div class="message-avatar small">
-            <img v-if="reply.user?.raw_user_meta_data?.avatar_url" :src="reply.user.raw_user_meta_data.avatar_url" />
+            <img
+              v-if="reply.user?.raw_user_meta_data?.avatar_url"
+              :src="reply.user.raw_user_meta_data.avatar_url"
+            />
             <span v-else>{{ getInitial(reply.user) }}</span>
           </div>
           <div class="message-meta">
             <strong>{{ getName(reply.user) }}</strong>
             <span class="message-time">{{ formatTime(reply.created_at) }}</span>
           </div>
-          <button v-if="!reply.deleted && permissions.canComment" class="reply-msg-btn" @click="setReplyTarget(reply)" title="Reply to this">&#8617;</button>
-          <button v-if="permissions.canDelete && !reply.deleted" class="delete-msg-btn" @click="deleteComment(reply.id)" title="Delete">&times;</button>
+          <button
+            v-if="!reply.deleted && permissions.canComment"
+            class="reply-msg-btn"
+            @click="setReplyTarget(reply)"
+            title="Reply to this"
+          >
+            &#8617;
+          </button>
+          <button
+            v-if="permissions.canDelete && !reply.deleted"
+            class="delete-msg-btn"
+            @click="deleteComment(reply.id)"
+            title="Delete"
+          >
+            &times;
+          </button>
         </div>
         <p class="message-content" :class="{ 'deleted-text': reply.deleted }">
           {{ reply.deleted ? '[deleted]' : reply.content }}
         </p>
         <div v-if="!reply.deleted && reply.attachment_url" class="message-attachment">
-          <img v-if="reply.attachment_type === 'image'" :src="reply.attachment_url" class="attachment-image" />
-          <a v-else :href="reply.attachment_url" target="_blank" rel="noopener" class="attachment-link">{{ reply.attachment_url }}</a>
+          <img
+            v-if="reply.attachment_type === 'image'"
+            :src="reply.attachment_url"
+            class="attachment-image"
+          />
+          <a
+            v-else
+            :href="reply.attachment_url"
+            target="_blank"
+            rel="noopener"
+            class="attachment-link"
+          >
+            {{ reply.attachment_url }}
+          </a>
         </div>
       </div>
     </div>
@@ -79,7 +154,11 @@
     <div v-if="permissions.canComment && !thread.deleted" class="reply-box">
       <!-- Reply-to indicator -->
       <div v-if="replyTarget" class="replying-to-bar">
-        <span>&#8617; Replying to <strong>{{ getName(replyTarget.user) }}</strong>: "{{ truncate(replyTarget.content, 40) }}"</span>
+        <span>
+          &#8617; Replying to
+          <strong>{{ getName(replyTarget.user) }}</strong>
+          : "{{ truncate(replyTarget.content, 40) }}"
+        </span>
         <button @click="replyTarget = null">&times;</button>
       </div>
       <div class="reply-attachments" v-if="attachment">
@@ -90,11 +169,19 @@
       </div>
       <div class="reply-input-row">
         <button class="attach-btn" @click="triggerFileInput" title="Attach">+</button>
-        <input type="file" ref="fileInputRef" @change="handleAttach" accept="image/*,.pdf,.doc,.docx" class="hidden-input" />
+        <input
+          type="file"
+          ref="fileInputRef"
+          @change="handleAttach"
+          accept="image/*,.pdf,.doc,.docx"
+          class="hidden-input"
+        />
         <textarea
           v-model="replyText"
           @keydown.enter.exact.prevent="sendReply"
-          :placeholder="replyTarget ? `Reply to ${getName(replyTarget.user)}...` : 'Reply to thread...'"
+          :placeholder="
+            replyTarget ? `Reply to ${getName(replyTarget.user)}...` : 'Reply to thread...'
+          "
           rows="1"
         />
         <button class="send-btn" :disabled="!replyText.trim() && !attachment" @click="sendReply">
@@ -139,7 +226,7 @@ const fileInputRef = ref(null)
 
 const targetLabel = computed(() => {
   if (!props.thread?.element_id) return 'Canvas'
-  const el = elements.elements.find(e => e.id === props.thread.element_id)
+  const el = elements.elements.find((e) => e.id === props.thread.element_id)
   if (!el) return 'Element'
   if (el.type === 'card') {
     const title = el.content?.title
@@ -178,7 +265,7 @@ function truncate(text, len) {
 
 function getReplyToText(replyToId) {
   const all = [props.thread, ...(props.thread?.replies || [])]
-  const msg = all.find(m => m.id === replyToId)
+  const msg = all.find((m) => m.id === replyToId)
   return msg ? truncate(msg.content, 40) : '...'
 }
 
@@ -232,8 +319,13 @@ async function handleAttach(e) {
   const ext = file.name.split('.').pop()
   const path = `comments/${projectId}/${Date.now()}.${ext}`
 
-  const { error } = await supabase.storage.from('uploads').upload(path, file, { contentType: file.type })
-  if (error) { console.error('[Upload] Failed:', error.message); return }
+  const { error } = await supabase.storage
+    .from('uploads')
+    .upload(path, file, { contentType: file.type })
+  if (error) {
+    console.error('[Upload] Failed:', error.message)
+    return
+  }
 
   const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(path)
   if (urlData?.publicUrl) {
@@ -261,11 +353,15 @@ async function deleteThread() {
   }
 }
 
-watch(() => props.thread, () => {
-  nextTick(() => {
-    if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight
-  })
-}, { deep: true })
+watch(
+  () => props.thread,
+  () => {
+    nextTick(() => {
+      if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+    })
+  },
+  { deep: true }
+)
 </script>
 
 <style scoped>
@@ -291,7 +387,11 @@ watch(() => props.thread, () => {
   border-bottom: 1px solid var(--moss);
 }
 
-.thread-title { display: flex; align-items: center; gap: 0.5rem; }
+.thread-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 
 .thread-on {
   font-family: 'Space Mono', monospace;
@@ -313,14 +413,18 @@ watch(() => props.thread, () => {
 .deleted-badge {
   font-family: 'Space Mono', monospace;
   font-size: 0.6rem;
-  color: rgba(255,80,80,0.7);
-  background: rgba(255,80,80,0.1);
+  color: rgba(255, 80, 80, 0.7);
+  background: rgba(255, 80, 80, 0.1);
   padding: 0.15rem 0.5rem;
   border-radius: 2px;
   text-transform: uppercase;
 }
 
-.thread-actions { display: flex; gap: 0.5rem; align-items: center; }
+.thread-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
 
 .resolve-btn {
   background: rgba(106, 125, 91, 0.2);
@@ -333,18 +437,24 @@ watch(() => props.thread, () => {
   text-transform: uppercase;
   transition: all 0.15s;
 }
-.resolve-btn:hover { background: var(--moss); color: var(--paper); }
+.resolve-btn:hover {
+  background: var(--moss);
+  color: var(--paper);
+}
 
 .delete-thread-btn {
   background: transparent;
-  border: 1px solid rgba(255,80,80,0.3);
-  color: rgba(255,80,80,0.6);
+  border: 1px solid rgba(255, 80, 80, 0.3);
+  color: rgba(255, 80, 80, 0.6);
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.15s;
 }
-.delete-thread-btn:hover { background: rgba(255,80,80,0.15); color: #ff5050; }
+.delete-thread-btn:hover {
+  background: rgba(255, 80, 80, 0.15);
+  color: #ff5050;
+}
 
 .close-btn {
   background: transparent;
@@ -354,7 +464,9 @@ watch(() => props.thread, () => {
   cursor: pointer;
   padding: 0;
 }
-.close-btn:hover { color: var(--paper); }
+.close-btn:hover {
+  color: var(--paper);
+}
 
 .thread-messages {
   flex: 1;
@@ -365,10 +477,18 @@ watch(() => props.thread, () => {
   gap: 0.75rem;
 }
 
-.message { display: flex; flex-direction: column; gap: 0.4rem; }
+.message {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
 
-.message.resolved { opacity: 0.5; }
-.message.deleted { opacity: 0.4; }
+.message.resolved {
+  opacity: 0.5;
+}
+.message.deleted {
+  opacity: 0.4;
+}
 
 .reply-message {
   padding-left: 1rem;
@@ -401,7 +521,11 @@ watch(() => props.thread, () => {
   white-space: nowrap;
 }
 
-.message-header { display: flex; align-items: center; gap: 0.5rem; }
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 
 .message-avatar {
   width: 28px;
@@ -418,12 +542,34 @@ watch(() => props.thread, () => {
   overflow: hidden;
   flex-shrink: 0;
 }
-.message-avatar.small { width: 22px; height: 22px; font-size: 0.55rem; }
-.message-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.message-avatar.small {
+  width: 22px;
+  height: 22px;
+  font-size: 0.55rem;
+}
+.message-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
-.message-meta { display: flex; align-items: baseline; gap: 0.5rem; flex: 1; min-width: 0; }
-.message-meta strong { font-family: 'Space Mono', monospace; font-size: 0.75rem; color: var(--paper); }
-.message-time { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--moss-light); }
+.message-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+.message-meta strong {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--paper);
+}
+.message-time {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--moss-light);
+}
 
 .reply-msg-btn {
   background: transparent;
@@ -435,8 +581,12 @@ watch(() => props.thread, () => {
   opacity: 0;
   transition: opacity 0.15s;
 }
-.message:hover .reply-msg-btn { opacity: 1; }
-.reply-msg-btn:hover { color: var(--terracotta); }
+.message:hover .reply-msg-btn {
+  opacity: 1;
+}
+.reply-msg-btn:hover {
+  color: var(--terracotta);
+}
 
 .delete-msg-btn {
   background: transparent;
@@ -448,7 +598,9 @@ watch(() => props.thread, () => {
   opacity: 0;
   transition: opacity 0.15s;
 }
-.message:hover .delete-msg-btn { opacity: 1; }
+.message:hover .delete-msg-btn {
+  opacity: 1;
+}
 
 .message-content {
   font-size: 0.85rem;
@@ -457,13 +609,32 @@ watch(() => props.thread, () => {
   margin: 0;
   white-space: pre-wrap;
 }
-.message-content.deleted-text { color: var(--moss-light); font-style: italic; }
+.message-content.deleted-text {
+  color: var(--moss-light);
+  font-style: italic;
+}
 
-.message-attachment { margin-top: 0.25rem; }
-.attachment-image { max-width: 100%; max-height: 200px; object-fit: contain; border: 1px solid var(--moss); border-radius: 4px; }
-.attachment-link { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--stencil-orange); text-decoration: underline; }
+.message-attachment {
+  margin-top: 0.25rem;
+}
+.attachment-image {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border: 1px solid var(--moss);
+  border-radius: 4px;
+}
+.attachment-link {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--stencil-orange);
+  text-decoration: underline;
+}
 
-.reply-box { border-top: 1px solid var(--moss); padding: 0.75rem; }
+.reply-box {
+  border-top: 1px solid var(--moss);
+  padding: 0.75rem;
+}
 
 .replying-to-bar {
   display: flex;
@@ -484,7 +655,9 @@ watch(() => props.thread, () => {
   font-size: 1rem;
 }
 
-.reply-attachments { margin-bottom: 0.5rem; }
+.reply-attachments {
+  margin-bottom: 0.5rem;
+}
 .attachment-preview {
   display: flex;
   align-items: center;
@@ -495,9 +668,19 @@ watch(() => props.thread, () => {
   color: var(--moss-light);
   border: 1px solid var(--moss);
 }
-.attachment-preview button { background: transparent; border: none; color: var(--moss-light); cursor: pointer; font-size: 1rem; }
+.attachment-preview button {
+  background: transparent;
+  border: none;
+  color: var(--moss-light);
+  cursor: pointer;
+  font-size: 1rem;
+}
 
-.reply-input-row { display: flex; gap: 0.4rem; align-items: flex-end; }
+.reply-input-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-end;
+}
 
 .attach-btn {
   background: transparent;
@@ -513,9 +696,17 @@ watch(() => props.thread, () => {
   flex-shrink: 0;
   transition: all 0.15s;
 }
-.attach-btn:hover { border-color: var(--terracotta); color: var(--terracotta); }
+.attach-btn:hover {
+  border-color: var(--terracotta);
+  color: var(--terracotta);
+}
 
-.hidden-input { position: absolute; opacity: 0; width: 0; height: 0; }
+.hidden-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
 
 .reply-input-row textarea {
   flex: 1;
@@ -530,7 +721,10 @@ watch(() => props.thread, () => {
   max-height: 120px;
   line-height: 1.4;
 }
-.reply-input-row textarea:focus { outline: none; border-color: var(--terracotta); }
+.reply-input-row textarea:focus {
+  outline: none;
+  border-color: var(--terracotta);
+}
 
 .send-btn {
   background: var(--terracotta);
@@ -546,8 +740,13 @@ watch(() => props.thread, () => {
   flex-shrink: 0;
   transition: all 0.15s;
 }
-.send-btn:hover:not(:disabled) { background: var(--stencil-orange); }
-.send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.send-btn:hover:not(:disabled) {
+  background: var(--stencil-orange);
+}
+.send-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
 
 .resolve-icon {
   margin-right: 4px;

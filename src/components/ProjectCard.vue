@@ -4,7 +4,10 @@
     :id="project.id"
     :data-type="project.type"
     class="project-card"
-    :class="[project.size, { 'sub-project': isSubProject, 'is-dragging': isDragging, 'selected': isSelected }]"
+    :class="[
+      project.size,
+      { 'sub-project': isSubProject, 'is-dragging': isDragging, selected: isSelected }
+    ]"
     :style="cardStyles"
     @click="handleCardClick"
     @dblclick="$emit('dblclick', $event)"
@@ -58,12 +61,7 @@
 
     <!-- Link chips -->
     <div v-if="project.links && project.links.length" class="links-row">
-      <LinkChip
-        v-for="(link, idx) in project.links"
-        :key="idx"
-        :url="link.url"
-        :type="link.type"
-      />
+      <LinkChip v-for="(link, idx) in project.links" :key="idx" :url="link.url" :type="link.type" />
     </div>
 
     <div v-if="isSubProject" class="sub-project-indicator">
@@ -161,7 +159,9 @@ const cardStyles = computed(() => {
     return {
       ...baseStyles,
       opacity: store.focusedType
-        ? (props.project.type === store.focusedType ? '1' : '0.15')
+        ? props.project.type === store.focusedType
+          ? '1'
+          : '0.15'
         : anim.opacity,
       transform: anim.transform
     }
@@ -169,9 +169,7 @@ const cardStyles = computed(() => {
 
   return {
     ...baseStyles,
-    opacity: store.focusedType
-      ? (props.project.type === store.focusedType ? '1' : '0.15')
-      : '1',
+    opacity: store.focusedType ? (props.project.type === store.focusedType ? '1' : '0.15') : '1',
     transform: 'translateZ(0)'
   }
 })
@@ -179,13 +177,13 @@ const cardStyles = computed(() => {
 const handleCardClick = (e) => {
   if (isDragging.value) return
   e.stopPropagation()
-  
+
   // Canvas mode: emit click event for parent to handle
   if (props.canvasMode) {
     $emit('click', props.project)
     return
   }
-  
+
   // If clickToNavigate is enabled, navigate to project view
   if (props.clickToNavigate) {
     router.push({ name: 'canvas-view', params: { projectId: props.project.id } })
@@ -215,7 +213,9 @@ function handleDragStart(e) {
     document.removeEventListener('mousemove', onDragMove)
     document.removeEventListener('mouseup', onDragEnd)
     if (isDragging.value) {
-      setTimeout(() => { isDragging.value = false }, 100)
+      setTimeout(() => {
+        isDragging.value = false
+      }, 100)
     }
   }
 
@@ -234,9 +234,10 @@ function onMouseDown(e) {
 
 async function saveField(field, value) {
   if (!props.project._raw) return
-  const current = (typeof props.project._raw[field] === 'object' && props.project._raw[field] !== null)
-    ? props.project._raw[field]
-    : {}
+  const current =
+    typeof props.project._raw[field] === 'object' && props.project._raw[field] !== null
+      ? props.project._raw[field]
+      : {}
   const merged = { ...current, [locale.value]: value }
   await projectsStore.updateProject(props.project.id, { [field]: merged })
   queueTranslation(props.project.id, field, value, locale.value)

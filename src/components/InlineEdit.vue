@@ -16,8 +16,16 @@
 
       <!-- Dual edit buttons on hover -->
       <span v-if="showControls && canEdit" class="edit-controls" @click.stop>
-        <button class="edit-btn btn-data"        @click.stop="startEdit('data')"        title="Edit source text">✎ {{ sourceLang.toUpperCase() }}</button>
-        <button class="edit-btn btn-translation" @click.stop="startEdit('translation')" title="Edit translation only">✎ {{ targetLang.toUpperCase() }}</button>
+        <button class="edit-btn btn-data" @click.stop="startEdit('data')" title="Edit source text">
+          ✎ {{ sourceLang.toUpperCase() }}
+        </button>
+        <button
+          class="edit-btn btn-translation"
+          @click.stop="startEdit('translation')"
+          title="Edit translation only"
+        >
+          ✎ {{ targetLang.toUpperCase() }}
+        </button>
       </span>
     </component>
 
@@ -25,9 +33,14 @@
     <div v-else class="edit-container" @click.stop>
       <!-- Mode badge -->
       <div class="mode-badge" :class="'badge-' + editMode">
-        <span v-if="editMode === 'data'">✎ editing {{ sourceLang.toUpperCase() }} — auto-translates to {{ targetLang.toUpperCase() }}</span>
+        <span v-if="editMode === 'data'">
+          ✎ editing {{ sourceLang.toUpperCase() }} — auto-translates to
+          {{ targetLang.toUpperCase() }}
+        </span>
         <span v-else>✎ editing {{ targetLang.toUpperCase() }} translation only</span>
-        <button class="mode-switch" @click.stop="switchMode">switch to {{ editMode === 'data' ? targetLang.toUpperCase() : sourceLang.toUpperCase() }}</button>
+        <button class="mode-switch" @click.stop="switchMode">
+          switch to {{ editMode === 'data' ? targetLang.toUpperCase() : sourceLang.toUpperCase() }}
+        </button>
       </div>
 
       <textarea
@@ -57,7 +70,8 @@
     </div>
 
     <div v-if="editedBy" class="edited-by-indicator">
-      <span class="edited-by-dot"></span>{{ editedBy }}
+      <span class="edited-by-dot"></span>
+      {{ editedBy }}
     </div>
   </div>
 </template>
@@ -69,29 +83,29 @@ import { useI18n } from 'vue-i18n'
 const { locale } = useI18n()
 
 const props = defineProps({
-  modelValue:   { type: String,  default: '' },
-  tag:          { type: String,  default: 'span' },
-  displayClass: { type: String,  default: '' },
-  placeholder:  { type: String,  default: 'Click to edit...' },
-  multiline:    { type: Boolean, default: false },
-  inputType:    { type: String,  default: 'text' },
-  canEdit:      { type: Boolean, default: false },
-  editedBy:     { type: String,  default: null },
-  rawValue:     { type: [Object, String], default: null },
+  modelValue: { type: String, default: '' },
+  tag: { type: String, default: 'span' },
+  displayClass: { type: String, default: '' },
+  placeholder: { type: String, default: 'Click to edit...' },
+  multiline: { type: Boolean, default: false },
+  inputType: { type: String, default: 'text' },
+  canEdit: { type: Boolean, default: false },
+  editedBy: { type: String, default: null },
+  rawValue: { type: [Object, String], default: null }
 })
 
 const emit = defineEmits(['save', 'save-translation', 'editing', 'cancel'])
 
-const isEditing    = ref(false)
+const isEditing = ref(false)
 const showControls = ref(false)
-const inputRef     = ref(null)
-const editValue    = ref('')
+const inputRef = ref(null)
+const editValue = ref('')
 const originalValue = ref('')
-const editMode     = ref('data') // 'data' | 'translation'
-let autosaveTimer  = null
+const editMode = ref('data') // 'data' | 'translation'
+let autosaveTimer = null
 
 const sourceLang = computed(() => locale.value)
-const targetLang = computed(() => locale.value === 'pt' ? 'en' : 'pt')
+const targetLang = computed(() => (locale.value === 'pt' ? 'en' : 'pt'))
 
 async function startEdit(mode) {
   if (!props.canEdit) return
@@ -152,8 +166,14 @@ onBeforeUnmount(() => clearTimeout(autosaveTimer))
 </script>
 
 <style scoped>
-.inline-edit { position: relative; display: inline-block; width: 100%; }
-.inline-edit:not(.read-only):hover { cursor: text; }
+.inline-edit {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+.inline-edit:not(.read-only):hover {
+  cursor: text;
+}
 
 /* Dual hover buttons */
 .edit-controls {
@@ -164,7 +184,14 @@ onBeforeUnmount(() => clearTimeout(autosaveTimer))
   animation: fadeIn 0.15s forwards;
 }
 
-@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 
 .edit-btn {
   display: inline-flex;
@@ -185,17 +212,23 @@ onBeforeUnmount(() => clearTimeout(autosaveTimer))
   border-color: var(--terracotta);
   color: var(--terracotta);
 }
-.btn-data:hover { background: rgba(181, 93, 58, 0.35); }
+.btn-data:hover {
+  background: rgba(181, 93, 58, 0.35);
+}
 
 .btn-translation {
   background: rgba(80, 140, 220, 0.15);
   border-color: #508cdc;
   color: #508cdc;
 }
-.btn-translation:hover { background: rgba(80, 140, 220, 0.3); }
+.btn-translation:hover {
+  background: rgba(80, 140, 220, 0.3);
+}
 
 /* Edit container */
-.edit-container { width: 100%; }
+.edit-container {
+  width: 100%;
+}
 
 /* Mode badge */
 .mode-badge {
@@ -234,7 +267,9 @@ onBeforeUnmount(() => clearTimeout(autosaveTimer))
   opacity: 0.7;
   transition: opacity 0.15s;
 }
-.mode-switch:hover { opacity: 1; }
+.mode-switch:hover {
+  opacity: 1;
+}
 
 /* Input — color-coded by mode */
 .edit-input {
@@ -260,7 +295,10 @@ onBeforeUnmount(() => clearTimeout(autosaveTimer))
   box-shadow: 0 0 0 2px rgba(80, 140, 220, 0.12);
 }
 
-.edit-textarea { resize: vertical; min-height: 60px; }
+.edit-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
 
 .edited-by-indicator {
   display: flex;
@@ -273,11 +311,20 @@ onBeforeUnmount(() => clearTimeout(autosaveTimer))
 }
 
 .edited-by-dot {
-  width: 6px; height: 6px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--stencil-orange);
   animation: pulse 1.5s infinite;
 }
 
-@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
 </style>

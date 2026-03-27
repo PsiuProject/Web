@@ -27,11 +27,7 @@
     </CanvasBase>
 
     <!-- Comment Thread sidebar -->
-    <CommentThread
-      v-if="activeThread"
-      :thread="activeThread"
-      @close="activeThread = null"
-    />
+    <CommentThread v-if="activeThread" :thread="activeThread" @close="activeThread = null" />
 
     <!-- New comment input (inline popover near element) -->
     <Teleport to="body">
@@ -54,7 +50,9 @@
             <span class="hint">Ctrl+Enter to submit</span>
             <div class="action-btns">
               <button class="cancel-btn" @click="showNewComment = false">Cancel</button>
-              <button class="submit-btn" :disabled="!newCommentText.trim()" @click="submitComment">Comment</button>
+              <button class="submit-btn" :disabled="!newCommentText.trim()" @click="submitComment">
+                Comment
+              </button>
             </div>
           </div>
         </div>
@@ -93,7 +91,9 @@ const hoveredElementId = ref(null)
 const pendingElementId = ref(null)
 
 const componentMap = { card: Card, text: Text, image: ImageEl, link: Link, button: Link }
-function getComponent(type) { return componentMap[type] || Text }
+function getComponent(type) {
+  return componentMap[type] || Text
+}
 
 function hasComments(elementId) {
   return (comments.activeThreadsByElement[elementId]?.length || 0) > 0
@@ -112,7 +112,7 @@ function shouldShowBubble(elementId) {
 
 const targetLabel = computed(() => {
   if (!pendingElementId.value) return 'Canvas'
-  const el = elements.elements.find(e => e.id === pendingElementId.value)
+  const el = elements.elements.find((e) => e.id === pendingElementId.value)
   if (!el) return 'Element'
   if (el.type === 'card') {
     const title = el.content?.title
@@ -124,11 +124,13 @@ const targetLabel = computed(() => {
 
 // Position the new comment form near the element
 const newCommentFormStyle = computed(() => {
-  if (!pendingElementId.value) return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
-  const el = elements.elements.find(e => e.id === pendingElementId.value)
+  if (!pendingElementId.value)
+    return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
+  const el = elements.elements.find((e) => e.id === pendingElementId.value)
   if (!el) return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
   // Convert canvas coords to screen coords
-  const screenX = el.position_x * viewport.zoom + viewport.translateX + el.width * viewport.zoom + 50
+  const screenX =
+    el.position_x * viewport.zoom + viewport.translateX + el.width * viewport.zoom + 50
   const screenY = el.position_y * viewport.zoom + viewport.translateY
   return {
     position: 'fixed',
@@ -211,8 +213,10 @@ onUnmounted(() => {
 
 .new-comment-overlay {
   position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   background: rgba(0, 0, 0, 0.5);
   z-index: 960;
   pointer-events: all;
@@ -254,7 +258,9 @@ onUnmounted(() => {
   padding: 0;
   line-height: 1;
 }
-.close-form-btn:hover { color: var(--paper); }
+.close-form-btn:hover {
+  color: var(--paper);
+}
 
 .comment-target {
   font-family: 'Space Mono', monospace;
@@ -276,7 +282,10 @@ onUnmounted(() => {
   box-sizing: border-box;
   border-radius: 2px;
 }
-.new-comment-form textarea:focus { outline: none; border-color: var(--terracotta); }
+.new-comment-form textarea:focus {
+  outline: none;
+  border-color: var(--terracotta);
+}
 
 .comment-form-actions {
   display: flex;
@@ -308,7 +317,9 @@ onUnmounted(() => {
   border-radius: 2px;
   transition: all 0.15s;
 }
-.cancel-btn:hover { background: rgba(106, 125, 91, 0.1); }
+.cancel-btn:hover {
+  background: rgba(106, 125, 91, 0.1);
+}
 
 .submit-btn {
   background: var(--terracotta);
@@ -323,6 +334,11 @@ onUnmounted(() => {
   border-radius: 2px;
   transition: all 0.15s;
 }
-.submit-btn:hover:not(:disabled) { background: var(--stencil-orange); }
-.submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.submit-btn:hover:not(:disabled) {
+  background: var(--stencil-orange);
+}
+.submit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 </style>

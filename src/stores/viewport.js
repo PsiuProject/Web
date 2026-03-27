@@ -33,7 +33,8 @@ export const useViewportStore = defineStore('viewport', {
   }),
 
   getters: {
-    canvasTransform: (state) => `translate3d(${state.translateX}px, ${state.translateY}px, 0) scale(${state.zoom})`
+    canvasTransform: (state) =>
+      `translate3d(${state.translateX}px, ${state.translateY}px, 0) scale(${state.zoom})`
   },
 
   actions: {
@@ -63,16 +64,16 @@ export const useViewportStore = defineStore('viewport', {
     updateTranslate(x, y) {
       const now = performance.now()
       const dt = Math.max(1, now - this.lastMoveTime)
-      
+
       const dx = x - this.lastMoveX
       const dy = y - this.lastMoveY
-      
-      this.velocityX = dx / dt * 16
-      this.velocityY = dy / dt * 16
-      
+
+      this.velocityX = (dx / dt) * 16
+      this.velocityY = (dy / dt) * 16
+
       this.translateX = x - this.startX
       this.translateY = y - this.startY
-      
+
       this.lastMoveX = x
       this.lastMoveY = y
       this.lastMoveTime = now
@@ -89,10 +90,10 @@ export const useViewportStore = defineStore('viewport', {
       const animate = () => {
         this.velocityX *= 0.92
         this.velocityY *= 0.92
-        
+
         this.translateX += this.velocityX
         this.translateY += this.velocityY
-        
+
         const currentSpeed = Math.sqrt(this.velocityX ** 2 + this.velocityY ** 2)
         if (currentSpeed > 0.1 && !this.isDragging) {
           this.momentumFrame = requestAnimationFrame(animate)
@@ -102,7 +103,7 @@ export const useViewportStore = defineStore('viewport', {
           this.momentumFrame = null
         }
       }
-      
+
       this.momentumFrame = requestAnimationFrame(animate)
     },
 
@@ -117,22 +118,22 @@ export const useViewportStore = defineStore('viewport', {
 
     adjustZoom(deltaY, mouseX, mouseY) {
       this.stopMomentum()
-      
+
       if (this.zoomTimeout) clearTimeout(this.zoomTimeout)
       this.isZooming = true
-      
+
       const oldZoom = this.zoom
       const newZoom = Math.min(Math.max(0.15, this.zoom - deltaY * 0.001), 3)
-      
+
       if (newZoom !== oldZoom) {
         const worldX = (mouseX - this.translateX) / oldZoom
         const worldY = (mouseY - this.translateY) / oldZoom
-        
+
         this.translateX = mouseX - worldX * newZoom
         this.translateY = mouseY - worldY * newZoom
         this.zoom = newZoom
       }
-      
+
       this.zoomTimeout = setTimeout(() => {
         this.isZooming = false
       }, 150)
@@ -145,7 +146,7 @@ export const useViewportStore = defineStore('viewport', {
         const dy = e.touches[0].clientY - e.touches[1].clientY
         this.touchStartDistance = Math.sqrt(dx * dx + dy * dy)
         this.touchStartZoom = this.zoom
-        
+
         // Store initial pan position for two-finger panning
         this.touchStartTranslateX = this.translateX
         this.touchStartTranslateY = this.translateY
@@ -156,7 +157,7 @@ export const useViewportStore = defineStore('viewport', {
         this.touchVelocityX = 0
         this.touchVelocityY = 0
         this.touchLastMoveTime = performance.now()
-        
+
         // Stop any existing momentum and mark as dragging
         this.stopMomentum()
         this.isDragging = true
@@ -172,39 +173,39 @@ export const useViewportStore = defineStore('viewport', {
         const dx = e.touches[0].clientX - e.touches[1].clientX
         const dy = e.touches[0].clientY - e.touches[1].clientY
         const distance = Math.sqrt(dx * dx + dy * dy)
-        
+
         const currentCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2
         const currentCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2
-        
+
         // Calculate delta from last center position for panning
         const panDeltaX = currentCenterX - this.touchLastCenterX
         const panDeltaY = currentCenterY - this.touchLastCenterY
-        
+
         // Apply pan based on finger center movement
         this.translateX += panDeltaX
         this.translateY += panDeltaY
-        
+
         // Handle zoom only if distance changed significantly
         if (this.touchStartDistance > 0 && Math.abs(distance - this.touchStartDistance) > 5) {
           const scale = distance / this.touchStartDistance
           const newZoom = Math.max(0.15, Math.min(3, this.touchStartZoom * scale))
-          
+
           // Zoom around the current finger center point
           const worldX = (currentCenterX - this.translateX) / this.zoom
           const worldY = (currentCenterY - this.translateY) / this.zoom
-          
+
           this.translateX = currentCenterX - worldX * newZoom
           this.translateY = currentCenterY - worldY * newZoom
           this.zoom = newZoom
         }
-        
+
         // Calculate velocity for momentum using pan movement
         const now = performance.now()
         const dt = Math.max(1, now - this.touchLastMoveTime)
-        
-        this.touchVelocityX = panDeltaX / dt * 16
-        this.touchVelocityY = panDeltaY / dt * 16
-        
+
+        this.touchVelocityX = (panDeltaX / dt) * 16
+        this.touchVelocityY = (panDeltaY / dt) * 16
+
         this.touchLastCenterX = currentCenterX
         this.touchLastCenterY = currentCenterY
         this.touchLastMoveTime = now
@@ -238,15 +239,15 @@ export const useViewportStore = defineStore('viewport', {
 
     centerOn(worldX, worldY, targetZoom = null) {
       this.stopMomentum()
-      
+
       if (typeof window === 'undefined') return
-      
+
       const viewportCenterX = window.innerWidth / 2
       const viewportCenterY = window.innerHeight / 2
       const z = targetZoom || this.zoom
-      
-      this.translateX = viewportCenterX - (worldX * z)
-      this.translateY = viewportCenterY - (worldY * z)
+
+      this.translateX = viewportCenterX - worldX * z
+      this.translateY = viewportCenterY - worldY * z
       if (targetZoom) this.zoom = targetZoom
     },
 

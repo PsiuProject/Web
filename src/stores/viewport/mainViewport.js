@@ -70,17 +70,17 @@ export function createMainViewportActions() {
     updateTranslate(x, y) {
       const now = performance.now()
       const dt = Math.max(1, now - this.lastMoveTime)
-      
+
       // Calculate velocity based on movement
       const dx = x - this.lastMoveX
       const dy = y - this.lastMoveY
-      
-      this.velocityX = dx / dt * 16 // Normalize to 60fps
-      this.velocityY = dy / dt * 16
-      
+
+      this.velocityX = (dx / dt) * 16 // Normalize to 60fps
+      this.velocityY = (dy / dt) * 16
+
       this.translateX = x - this.startX
       this.translateY = y - this.startY
-      
+
       this.lastMoveX = x
       this.lastMoveY = y
       this.lastMoveTime = now
@@ -101,11 +101,11 @@ export function createMainViewportActions() {
         const friction = 0.92
         this.velocityX *= friction
         this.velocityY *= friction
-        
+
         // Apply velocity to position
         this.translateX += this.velocityX
         this.translateY += this.velocityY
-        
+
         // Stop when velocity is very small
         const currentSpeed = Math.sqrt(this.velocityX ** 2 + this.velocityY ** 2)
         if (currentSpeed > 0.1 && !this.isDragging) {
@@ -116,7 +116,7 @@ export function createMainViewportActions() {
           this.momentumAnimationFrame = null
         }
       }
-      
+
       this.momentumAnimationFrame = requestAnimationFrame(animate)
     },
 
@@ -133,24 +133,24 @@ export function createMainViewportActions() {
     adjustZoom(deltaY, mouseX, mouseY) {
       // Stop momentum when zooming
       this.stopMomentum()
-      
+
       if (this.zoomTimeout) clearTimeout(this.zoomTimeout)
       this.isZooming = true
-      
+
       const oldZoom = this.zoom
       const newZoom = Math.min(Math.max(0.15, this.zoom - deltaY * 0.001), 2)
-      
+
       if (newZoom !== oldZoom) {
         // Calculate world point under mouse
         const worldX = (mouseX - this.translateX) / oldZoom
         const worldY = (mouseY - this.translateY) / oldZoom
-        
+
         // Keep same world point under mouse after zoom
         this.translateX = mouseX - worldX * newZoom
         this.translateY = mouseY - worldY * newZoom
         this.zoom = newZoom
       }
-      
+
       this.zoomTimeout = setTimeout(() => {
         this.isZooming = false
       }, 150)
@@ -160,74 +160,74 @@ export function createMainViewportActions() {
     centerOnFirstProject() {
       // Stop momentum when centering
       this.stopMomentum()
-      
+
       if (typeof window === 'undefined') return
-      
+
       const layout = this.layoutProjects
       if (!layout || layout.projects.length === 0) {
         console.warn('⚠️ No layout or projects available for centering')
         return
       }
-      
+
       // Find first active project
-      const firstProject = layout.projects.find(p => p.type === 'active') || layout.projects[0]
-      
+      const firstProject = layout.projects.find((p) => p.type === 'active') || layout.projects[0]
+
       // Get position - must use computedPosition from layout
       const position = firstProject.computedPosition
       if (!position) {
         console.error('❌ No computedPosition for project:', firstProject.id)
         return
       }
-      
+
       // Get card size - use default sizes, not calculated (which may not be ready yet)
       const cardSize = this.cardSizes[firstProject.size] || this.cardSizes['card-md']
-      
+
       // Calculate card center in world space
       const cardCenterX = position.left + cardSize.width / 2
       const cardCenterY = position.top + cardSize.height / 2
-      
+
       // Calculate viewport center
       const viewportCenterX = window.innerWidth / 2
       const viewportCenterY = window.innerHeight / 2
-      
+
       // Transform formula: screenPos = worldPos * zoom + translate
       // To center: viewportCenter = cardCenter * zoom + translate
       // Therefore: translate = viewportCenter - cardCenter * zoom
-      this.translateX = viewportCenterX - (cardCenterX * this.zoom)
-      this.translateY = viewportCenterY - (cardCenterY * this.zoom)
+      this.translateX = viewportCenterX - cardCenterX * this.zoom
+      this.translateY = viewportCenterY - cardCenterY * this.zoom
     },
 
     centerOnSection(type) {
       // Stop momentum when centering
       this.stopMomentum()
-      
+
       if (typeof window === 'undefined') return
-      
+
       const layout = this.layoutProjects
-      const firstOfKind = layout.projects.find(p => p.type === type)
-      
+      const firstOfKind = layout.projects.find((p) => p.type === type)
+
       if (!firstOfKind) {
         console.warn('⚠️ No project found for type:', type)
         return
       }
-      
+
       const position = firstOfKind.computedPosition
       if (!position) {
         console.error('❌ No computedPosition for project:', firstOfKind.id)
         return
       }
-      
+
       const cardSize = this.cardSizes[firstOfKind.size] || this.cardSizes['card-md']
-      
+
       const cardCenterX = position.left + cardSize.width / 2
       const cardCenterY = position.top + cardSize.height / 2
-      
+
       const viewportCenterX = window.innerWidth / 2
       const viewportCenterY = window.innerHeight / 2
-      
+
       this.zoom = 0.8
-      this.translateX = viewportCenterX - (cardCenterX * this.zoom)
-      this.translateY = viewportCenterY - (cardCenterY * this.zoom)
+      this.translateX = viewportCenterX - cardCenterX * this.zoom
+      this.translateY = viewportCenterY - cardCenterY * this.zoom
     }
   }
 }

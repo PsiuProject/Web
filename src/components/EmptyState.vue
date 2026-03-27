@@ -15,11 +15,47 @@
         <div class="empty-icon">
           <svg viewBox="0 0 200 200" class="earth-svg">
             <circle cx="100" cy="100" r="80" fill="none" stroke="var(--moss)" stroke-width="2" />
-            <ellipse cx="100" cy="100" rx="80" ry="30" fill="none" stroke="var(--moss-light)" stroke-width="1.5" transform="rotate(-23.5 100 100)" />
-            <ellipse cx="100" cy="100" rx="80" ry="30" fill="none" stroke="var(--moss-light)" stroke-width="1.5" transform="rotate(23.5 100 100)" />
-            <path d="M60,80 Q80,60 100,80 T140,80" fill="none" stroke="var(--terracotta)" stroke-width="2" opacity="0.6" />
-            <path d="M50,100 Q75,90 100,100 T150,100" fill="none" stroke="var(--terracotta)" stroke-width="2" opacity="0.4" />
-            <path d="M60,120 Q80,110 100,120 T140,120" fill="none" stroke="var(--terracotta)" stroke-width="2" opacity="0.6" />
+            <ellipse
+              cx="100"
+              cy="100"
+              rx="80"
+              ry="30"
+              fill="none"
+              stroke="var(--moss-light)"
+              stroke-width="1.5"
+              transform="rotate(-23.5 100 100)"
+            />
+            <ellipse
+              cx="100"
+              cy="100"
+              rx="80"
+              ry="30"
+              fill="none"
+              stroke="var(--moss-light)"
+              stroke-width="1.5"
+              transform="rotate(23.5 100 100)"
+            />
+            <path
+              d="M60,80 Q80,60 100,80 T140,80"
+              fill="none"
+              stroke="var(--terracotta)"
+              stroke-width="2"
+              opacity="0.6"
+            />
+            <path
+              d="M50,100 Q75,90 100,100 T150,100"
+              fill="none"
+              stroke="var(--terracotta)"
+              stroke-width="2"
+              opacity="0.4"
+            />
+            <path
+              d="M60,120 Q80,110 100,120 T140,120"
+              fill="none"
+              stroke="var(--terracotta)"
+              stroke-width="2"
+              opacity="0.6"
+            />
           </svg>
         </div>
 
@@ -125,13 +161,9 @@
           {{ $t('empty.testCanvas.back') }}
         </button>
       </div>
-      
+
       <div class="test-canvas-wrapper">
-        <CanvasEditor
-          :project-id="'demo-' + Date.now()"
-          :can-edit="true"
-          ref="canvasEditorRef"
-        />
+        <CanvasEditor :project-id="'demo-' + Date.now()" :can-edit="true" ref="canvasEditorRef" />
       </div>
     </div>
   </div>
@@ -259,10 +291,19 @@ function exitTestCanvas() {
 }
 
 @keyframes float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(2vw, -2vh) scale(1.05); }
-  50% { transform: translate(-1vw, 1vh) scale(0.95); }
-  75% { transform: translate(1.5vw, 1.5vh) scale(1.02); }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(2vw, -2vh) scale(1.05);
+  }
+  50% {
+    transform: translate(-1vw, 1vh) scale(0.95);
+  }
+  75% {
+    transform: translate(1.5vw, 1.5vh) scale(1.02);
+  }
 }
 
 /* Main content */
@@ -282,13 +323,18 @@ function exitTestCanvas() {
 .earth-svg {
   width: 20vw;
   height: 20vw;
-  max-width: 200px;
-  max-height: 200px;
+  max-width: clamp(180px, 25vw, 200px);
+  max-height: clamp(180px, 25vw, 200px);
 }
 
 @keyframes pulse-glow {
-  0%, 100% { filter: drop-shadow(0 0 2vh rgba(106, 125, 91, 0.3)); }
-  50% { filter: drop-shadow(0 0 4vh rgba(106, 125, 91, 0.6)); }
+  0%,
+  100% {
+    filter: drop-shadow(0 0 2vh rgba(106, 125, 91, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 4vh rgba(106, 125, 91, 0.6));
+  }
 }
 
 .empty-title {
@@ -447,17 +493,17 @@ function exitTestCanvas() {
   border-radius: 0.5vh;
 }
 
-.card-lg { 
-  width: clamp(180px, 28vw, 280px); 
-  min-height: clamp(140px, 18vh, 180px); 
+.card-lg {
+  width: clamp(180px, 28vw, 280px);
+  min-height: clamp(140px, 18vh, 180px);
 }
-.card-md { 
-  width: clamp(140px, 22vw, 220px); 
-  min-height: clamp(120px, 16vh, 160px); 
+.card-md {
+  width: clamp(140px, 22vw, 220px);
+  min-height: clamp(120px, 16vh, 160px);
 }
-.card-sm { 
-  width: clamp(120px, 18vw, 180px); 
-  min-height: clamp(100px, 14vh, 140px); 
+.card-sm {
+  width: clamp(120px, 18vw, 180px);
+  min-height: clamp(100px, 14vh, 140px);
 }
 
 .preview-tag {
@@ -471,9 +517,21 @@ function exitTestCanvas() {
   border-radius: 0.3vh;
 }
 
-.tag-active { background: rgba(255, 95, 31, 0.2); border: 1px solid #ff5f1f; color: #ff5f1f; }
-.tag-pipeline { background: rgba(106, 125, 91, 0.2); border: 1px solid #6a7d5b; color: #6a7d5b; }
-.tag-done { background: rgba(181, 93, 58, 0.2); border: 1px solid #b55d3a; color: #b55d3a; }
+.tag-active {
+  background: rgba(255, 95, 31, 0.2);
+  border: 1px solid #ff5f1f;
+  color: #ff5f1f;
+}
+.tag-pipeline {
+  background: rgba(106, 125, 91, 0.2);
+  border: 1px solid #6a7d5b;
+  color: #6a7d5b;
+}
+.tag-done {
+  background: rgba(181, 93, 58, 0.2);
+  border: 1px solid #b55d3a;
+  color: #b55d3a;
+}
 
 .preview-line {
   height: 1vh;
@@ -575,13 +633,13 @@ function exitTestCanvas() {
     flex-direction: column;
     align-items: center;
   }
-  
+
   .test-canvas-header {
     flex-direction: column;
     gap: 1.5vh;
     align-items: flex-start;
   }
-  
+
   .back-btn {
     align-self: flex-end;
   }
