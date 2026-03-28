@@ -1,4 +1,6 @@
 # Logs
+build/
+dist/
 .vite
 logs
 *.log
